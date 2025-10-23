@@ -1,5 +1,14 @@
 import { createApp } from 'vue'
-import './style.css'
+import { createPinia } from 'pinia'
 import App from './App.vue'
+import router from './router'
+import { registerElementPlus } from './plugins/element'
+import '@/styles/tailwind.css'
 
-createApp(App).mount('#app')
+const app = createApp(App)
+
+app.use(createPinia())
+app.use(router)
+registerElementPlus(app)
+
+app.mount('#app')
