@@ -5,73 +5,73 @@ import { useSpeakerStore } from '@/stores/useSpeaker'
 import type { CommandEvent, ReportEvent, SpeakerState } from '@/types/realtime'
 
 const transcriptSamples = [
-  'System check complete, awaiting commands.',
-  'Unit Bravo reporting all-clear on sector four.',
-  'Initiating countdown sequence, T-minus ten seconds.',
-  'Operator requesting confirmation on evacuation route.',
-  'Telemetry indicates rising pressure, recommend caution.',
-  'Standing by for next directive.',
+  '系统自检完成，等待下一步指令。',
+  'B 小队报告四号区域一切正常。',
+  '开始倒计时，距离发射还有十秒。',
+  '操作员请求确认撤离路线。',
+  '遥测数据显示压力上升，请注意。',
+  '保持待命，等待新的调度指令。',
 ]
 
 const commandSamples: Array<Omit<CommandEvent, 'id' | 'timestamp'>> = [
   {
     type: 'command',
-    command: 'countdown',
-    params: { phase: 'launch', timer: 'T-10' },
+    command: '启动倒计时',
+    params: { 阶段: '发射准备', 倒计时: 'T-10' },
     priority: 'high',
     authorized: true,
-    operator: { name: '指挥员 张伟', role: 'Supervisor' },
+    operator: { name: '指挥员 张伟', role: '指挥员' },
   },
   {
     type: 'command',
-    command: 'route_update',
-    params: { destination: 'Sector Delta', status: 'reroute' },
+    command: '更新行进路线',
+    params: { 目标: '三角洲区', 状态: '重新规划' },
     priority: 'medium',
     authorized: true,
-    operator: { name: '调度员 李雷', role: 'Coordinator' },
+    operator: { name: '调度员 李雷', role: '调度员' },
   },
   {
     type: 'command',
-    command: 'access_override',
-    params: { door: 'Hangar Bay', level: '4' },
+    command: '尝试设施解锁',
+    params: { 位置: '机库入口', 等级: '四级' },
     priority: 'high',
     authorized: false,
-    operator: { name: '未知人员', role: 'Unknown' },
+    operator: { name: '未知人员', role: '未知' },
   },
 ]
 
 const reportSamples: Array<Omit<ReportEvent, 'id' | 'timestamp'>> = [
   {
     type: 'report',
-    summary: 'Patrol squad returned with no incidents.',
+    summary: '巡逻小队返回，未发现异常。',
     status: 'ok',
     authorized: true,
-    operator: { name: '巡逻员 王芳', role: 'Field Unit' },
-    note: 'Area perimeter secured.',
+    operator: { name: '巡逻员 王芳', role: '巡逻员' },
+    note: '外围警戒线已加固。',
   },
   {
     type: 'report',
-    summary: 'Thermal sensors detecting anomalies.',
+    summary: '热成像传感器检测到异常信号。',
     status: 'warning',
     authorized: true,
-    operator: { name: '技术员 陈倩', role: 'Technician' },
-    note: 'Recommend manual inspection.',
+    operator: { name: '技术员 陈倩', role: '技术员' },
+    note: '建议派员进行现场复核。',
   },
   {
     type: 'report',
-    summary: 'Unauthorized badge attempt recorded.',
+    summary: '记录到未授权工牌尝试。',
     status: 'critical',
     authorized: false,
-    operator: { name: '未知人员', role: 'Unknown' },
-    note: 'Trigger security alert and lockout.',
+    operator: { name: '未知人员', role: '未知' },
+    note: '已触发安防告警并锁定受控区域。',
   },
 ]
 
 const speakerRoster: SpeakerState[] = [
-  { id: 'spk-1', name: '指挥员 张伟', role: 'Supervisor', confidence: 0.97 },
-  { id: 'spk-2', name: '操作员 李强', role: 'Operator', confidence: 0.92 },
-  { id: 'spk-3', name: '巡逻员 王芳', role: 'Field Unit', confidence: 0.88 },
-  { id: 'spk-4', name: '未知人员', role: 'Unknown', confidence: 0.41 },
+  { id: 'spk-1', name: '指挥员 张伟', role: '指挥员', confidence: 0.97 },
+  { id: 'spk-2', name: '操作员 李强', role: '操作员', confidence: 0.92 },
+  { id: 'spk-3', name: '巡逻员 王芳', role: '巡逻员', confidence: 0.88 },
+  { id: 'spk-4', name: '未知人员', role: '未知', confidence: 0.41 },
 ]
 
 const getRandom = <T>(items: T[]): T => items[Math.floor(Math.random() * items.length)]!
@@ -110,7 +110,7 @@ export function connectMockWs() {
   const fallbackSpeaker: SpeakerState = speakerRoster[0] ?? {
     id: 'spk-fallback',
     name: '系统默认',
-    role: 'System',
+    role: '系统监控',
     confidence: 1,
   }
   const unknownSpeaker: SpeakerState =

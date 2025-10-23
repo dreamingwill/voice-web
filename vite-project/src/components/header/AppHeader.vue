@@ -2,24 +2,24 @@
   <header class="bg-primary text-white shadow">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4 justify-between">
       <router-link to="/" class="text-lg font-semibold tracking-wide">
-        Voice &amp; Speaker Recognition
+        声纹语音识别控制台
       </router-link>
 
       <nav v-if="userStore.isAuthenticated" class="flex items-center gap-4 text-sm">
-        <RouterLink class="hover:underline" :class="linkClass('/')" to="/">Realtime View</RouterLink>
+        <RouterLink class="hover:underline" :class="linkClass('/')" to="/">实时监控</RouterLink>
         <RouterLink
           class="hover:underline"
           :class="linkClass('/admin/operators')"
           to="/admin/operators"
         >
-          Operators
+          操作员管理
         </RouterLink>
         <RouterLink
           class="hover:underline"
           :class="linkClass('/admin/logs')"
           to="/admin/logs"
         >
-          Logs
+          日志中心
         </RouterLink>
       </nav>
 
@@ -29,11 +29,11 @@
             {{ userStore.operatorName }} ({{ userStore.role }})
           </span>
           <el-button type="primary" plain size="small" @click="logout">
-            Logout
+            退出登录
           </el-button>
         </template>
         <template v-else>
-          <el-button size="small" @click="goLogin">Login</el-button>
+          <el-button size="small" @click="goLogin">登录</el-button>
         </template>
       </div>
     </div>

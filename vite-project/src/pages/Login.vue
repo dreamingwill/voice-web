@@ -1,29 +1,29 @@
 <template>
   <section class="max-w-sm mx-auto bg-white rounded-lg shadow p-6 space-y-5">
     <header class="text-center space-y-1">
-      <h2 class="text-xl font-semibold">Admin Login</h2>
-      <p class="text-sm text-slate-500">Use the mock credentials to access the control console.</p>
+      <h2 class="text-xl font-semibold">系统登录</h2>
+      <p class="text-sm text-slate-500">使用模拟账号进入语音控制台。</p>
     </header>
     <el-form :model="form" label-position="top" @submit.prevent="attemptLogin">
-      <el-form-item label="Username">
-        <el-input v-model="form.username" placeholder="Username" autocomplete="username" />
+      <el-form-item label="用户名">
+        <el-input v-model="form.username" placeholder="用户名" autocomplete="username" />
       </el-form-item>
-      <el-form-item label="Password">
+      <el-form-item label="密码">
         <el-input
           v-model="form.password"
           type="password"
-          placeholder="Password"
+          placeholder="密码"
           autocomplete="current-password"
           show-password
         />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" class="w-full" :loading="submitting" @click="attemptLogin">
-          Log In
+          登录
         </el-button>
       </el-form-item>
       <p class="text-xs text-slate-400 text-center">
-        Hint: admin / voice123
+        提示：admin / voice123
       </p>
     </el-form>
   </section>
@@ -52,10 +52,10 @@ async function attemptLogin() {
   submitting.value = false
 
   if (success) {
-    ElMessage.success('Login successful. Redirecting to dashboard.')
+    ElMessage.success('登录成功，正在跳转至控制台。')
     router.push({ name: 'home' })
   } else {
-    ElMessage.error('Invalid credentials. Try admin / voice123')
+    ElMessage.error('账号或密码错误，请重试（admin / voice123）')
   }
 }
 </script>

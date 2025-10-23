@@ -15,7 +15,7 @@ const MOCK_ACCOUNT: Credentials & { operatorName: string; role: string } = {
   username: 'admin',
   password: 'voice123',
   operatorName: '指挥员 张伟',
-  role: 'Supervisor',
+  role: '主管',
 }
 
 export const useUserStore = defineStore('user', {

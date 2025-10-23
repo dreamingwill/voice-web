@@ -2,42 +2,46 @@
   <section class="bg-white rounded-lg shadow p-6 space-y-5">
     <header class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h2 class="text-lg font-semibold text-primary">Event Logs</h2>
-        <p class="text-sm text-slate-600">Review simulated ASR, speaker, and authorization history.</p>
+        <h2 class="text-lg font-semibold text-primary">事件日志</h2>
+        <p class="text-sm text-slate-600">查看模拟的转写、说话人和授权记录。</p>
       </div>
-      <el-button type="primary" plain size="small" @click="exportLogs">Export CSV</el-button>
+      <el-button type="primary" plain size="small" @click="exportLogs">导出 CSV</el-button>
     </header>
 
     <el-form :inline="true" :model="filters" label-position="left" size="small" class="flex flex-wrap gap-3">
-      <el-form-item label="Type">
-        <el-select v-model="filters.type" placeholder="All">
-          <el-option label="All" value="" />
-          <el-option label="Command" value="command" />
-          <el-option label="Report" value="report" />
+      <el-form-item label="事件类型">
+        <el-select v-model="filters.type" placeholder="全部">
+          <el-option label="全部" value="" />
+          <el-option label="指令" value="command" />
+          <el-option label="报告" value="report" />
         </el-select>
       </el-form-item>
-      <el-form-item label="Authorization">
-        <el-select v-model="filters.authorized" placeholder="Any">
-          <el-option label="Any" value="" />
-          <el-option label="Authorized" value="true" />
-          <el-option label="Unauthorized" value="false" />
+      <el-form-item label="授权状态">
+        <el-select v-model="filters.authorized" placeholder="全部">
+          <el-option label="全部" value="" />
+          <el-option label="已授权" value="true" />
+          <el-option label="未授权" value="false" />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="applyFilters">Apply</el-button>
-        <el-button @click="resetFilters">Reset</el-button>
+        <el-button type="primary" @click="applyFilters">应用筛选</el-button>
+        <el-button @click="resetFilters">重置</el-button>
       </el-form-item>
     </el-form>
 
     <el-table :data="displayedLogs" stripe size="small" height="360">
-      <el-table-column prop="timestamp" label="Time" width="160" />
-      <el-table-column prop="type" label="Type" width="100" />
-      <el-table-column prop="operator" label="Operator" width="180" />
-      <el-table-column prop="summary" label="Summary" />
-      <el-table-column label="Authorized" width="140">
+      <el-table-column prop="timestamp" label="时间" width="160" />
+      <el-table-column label="类型" width="100">
+        <template #default="{ row }">
+          {{ row.type === 'command' ? '指令' : '报告' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="operator" label="人员" width="180" />
+      <el-table-column prop="summary" label="摘要" />
+      <el-table-column label="是否授权" width="140">
         <template #default="{ row }">
           <el-tag :type="row.authorized ? 'success' : 'danger'" size="small">
-            {{ row.authorized ? 'Yes' : 'No' }}
+            {{ row.authorized ? '是' : '否' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -64,7 +68,7 @@ const logs = ref<LogRow[]>([
     timestamp: new Date().toLocaleString(),
     type: 'command',
     operator: '指挥员 张伟',
-    summary: 'countdown initiated @ T-10',
+    summary: '发起倒计时指令（T-10）',
     authorized: true,
   },
   {
@@ -72,7 +76,7 @@ const logs = ref<LogRow[]>([
     timestamp: new Date().toLocaleString(),
     type: 'report',
     operator: '巡逻员 王芳',
-    summary: 'Perimeter secure, continuing sweep.',
+    summary: '外围安全，继续巡查。',
     authorized: true,
   },
   {
@@ -80,7 +84,7 @@ const logs = ref<LogRow[]>([
     timestamp: new Date().toLocaleString(),
     type: 'command',
     operator: '未知人员',
-    summary: 'Attempted access_override on Hangar Bay.',
+    summary: '尝试在机库入口执行未授权解锁。',
     authorized: false,
   },
 ])
@@ -101,7 +105,7 @@ const displayedLogs = computed(() => {
 })
 
 function applyFilters() {
-  ElMessage.success('Filters applied')
+  ElMessage.success('筛选条件已应用')
 }
 
 function resetFilters() {
@@ -110,6 +114,6 @@ function resetFilters() {
 }
 
 function exportLogs() {
-  ElMessage.success('Mock export triggered (CSV generation pending backend integration).')
+  ElMessage.success('已触发模拟导出，待后端接入后生成 CSV。')
 }
 </script>

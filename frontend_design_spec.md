@@ -18,17 +18,17 @@
 
 ## 1. 技术栈与结构
 
-| 层    | 技术                        | 说明                      |
-| ----- | --------------------------- | ------------------------- |
-| 框架  | Vue 3 + Vite                | Composition API + ESM     |
-| 状态  | Pinia                       | 模块化全局状态管理        |
-| 路由  | Vue Router                  | `/`, `/login`, `/admin/*` |
+| 层    | 技术                        | 说明                                                       |
+| ----- | --------------------------- | ---------------------------------------------------------- |
+| 框架  | Vue 3 + Vite                | Composition API + ESM                                      |
+| 状态  | Pinia                       | 模块化全局状态管理                                         |
+| 路由  | Vue Router                  | `/`, `/login`, `/admin/*`                                  |
 | UI 库 | Element Plus + Tailwind CSS | Element Plus 负责数据密集组件，Tailwind 负责布局与触控优化 |
-| 通信  | Axios + WebSocket           | HTTP 控制、WSS 实时语音流 |
-| 语言  | TypeScript                  | 强类型、易维护            |
-| 测试  | Vitest + Playwright         | 单元 + 端到端测试         |
-| 构建  | Vite                        | 极速热更新与生产构建      |
-| 部署  | FastAPI static / nginx      | RK3588 上运行             |
+| 通信  | Axios + WebSocket           | HTTP 控制、WSS 实时语音流                                  |
+| 语言  | TypeScript                  | 强类型、易维护                                             |
+| 测试  | Vitest + Playwright         | 单元 + 端到端测试                                          |
+| 构建  | Vite                        | 极速热更新与生产构建                                       |
+| 部署  | FastAPI static / nginx      | RK3588 上运行                                              |
 
 ---
 
@@ -39,6 +39,8 @@ VITE_API_BASE=http://localhost:8080
 VITE_WS_URL=ws://localhost:8080/ws/stream
 VITE_BUILD_TARGET=dev
 ```
+
+要求前端显示的文字为中文。
 
 ### 2.1 环境文件与配置
 
@@ -62,52 +64,52 @@ VITE_BUILD_TARGET=dev
 性能监控与设备自检（延迟、丢帧率、心跳状态）
 
 4. 目录结构
-src/
-  assets/
-  components/
-    alerts/AlertBanner.vue
-    cards/CommandCard.vue
-    cards/ReportCard.vue
-    audio/LevelMeter.vue
-    header/AppHeader.vue
-    footer/AppFooter.vue
-  pages/
-    MainView.vue
-    Login.vue
-    admin/Operators.vue
-    admin/Logs.vue
-  plugins/
-    element.ts
-  services/
-    apiService.ts
-    wsService.ts
-    audioService.ts
-  stores/
-    useConnection.ts
-    useAsr.ts
-    useSpeaker.ts
-    useEvents.ts
-    useUser.ts
-  types/
-    events.ts
-    api.ts
-  config/
-    env.ts
-  mocks/
-    http.ts
-    ws.ts
-  i18n/
-    index.ts
-    zh.ts
-    en.ts
-  styles/
-    tailwind.css
-    theme.css
-  main.ts
-  App.vue
+   src/
+   assets/
+   components/
+   alerts/AlertBanner.vue
+   cards/CommandCard.vue
+   cards/ReportCard.vue
+   audio/LevelMeter.vue
+   header/AppHeader.vue
+   footer/AppFooter.vue
+   pages/
+   MainView.vue
+   Login.vue
+   admin/Operators.vue
+   admin/Logs.vue
+   plugins/
+   element.ts
+   services/
+   apiService.ts
+   wsService.ts
+   audioService.ts
+   stores/
+   useConnection.ts
+   useAsr.ts
+   useSpeaker.ts
+   useEvents.ts
+   useUser.ts
+   types/
+   events.ts
+   api.ts
+   config/
+   env.ts
+   mocks/
+   http.ts
+   ws.ts
+   i18n/
+   index.ts
+   zh.ts
+   en.ts
+   styles/
+   tailwind.css
+   theme.css
+   main.ts
+   App.vue
 
 5. 核心模块说明
-audioService.ts
+   audioService.ts
 
 - 首次加载检测安全上下文、`AudioWorklet` 支持与采样率能力，不满足时回退为 `MediaRecorder + Web Worker`；
 - AudioWorkletProcessor 统一输出 16kHz/16-bit PCM mono，帧长 20–30ms，超过 40ms 触发丢帧记录；
@@ -144,7 +146,7 @@ stores
 - 对关键衍生数据使用 `computed` 缓存（例如连接延迟标签）。
 
 6. UI 界面与交互逻辑
-MainView.vue
+   MainView.vue
 
 顶栏：连接状态、说话人、延迟
 
@@ -171,22 +173,22 @@ UI 设计要点：
 - 管理后台表格采用虚拟滚动/分页策略，兼顾 RK3588 资源限制。
 
 7. WebSocket 消息格式
-客户端 -> 服务端
-{ "type": "audio.start", "data": { "sampleRate":16000, "format":"PCM16", "channels":1, "sessionId":"uuid" } }
-(binary audio chunks)
-{ "type": "audio.stop" }
+   客户端 -> 服务端
+   { "type": "audio.start", "data": { "sampleRate":16000, "format":"PCM16", "channels":1, "sessionId":"uuid" } }
+   (binary audio chunks)
+   { "type": "audio.stop" }
 
 服务端 -> 客户端
 {
-  "type": "event",
-  "data": {
-    "type": "command",
-    "event": "countdown",
-    "params": { "time": "T-10", "action": "continue" },
-    "operator": { "role": "指挥员" },
-    "authorized": true,
-    "timestamp": "2025-10-22T10:30:00Z"
-  }
+"type": "event",
+"data": {
+"type": "command",
+"event": "countdown",
+"params": { "time": "T-10", "action": "continue" },
+"operator": { "role": "指挥员" },
+"authorized": true,
+"timestamp": "2025-10-22T10:30:00Z"
+}
 }
 
 TypeScript 类型：
@@ -247,14 +249,17 @@ Mac 调试：
 
 npm i
 npm run dev
-# 访问 http://localhost:5173
 
+# 访问 http://localhost:5173
 
 RK3588 部署：
 
 npm run build
+
 # 复制 dist/ 到 RK3588
+
 # FastAPI:
+
 # app.mount("/", StaticFiles(directory="dist", html=True))
 
 部署要求：
@@ -276,4 +281,7 @@ npm run build
 7️⃣ 优化主题、性能与多语言体验
 8️⃣ 构建部署流程并上线至 RK3588（含自动巡检）
 9️⃣ 建立性能监控、测试回归与用户反馈循环
+
+```
+
 ```
