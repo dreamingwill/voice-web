@@ -3,21 +3,23 @@
     <header class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h2 class="text-lg font-semibold text-primary">事件日志</h2>
-        <p class="text-sm text-slate-600">查看模拟的转写、说话人和授权记录。</p>
+        <p class="text-sm text-slate-600">查看模拟的转写、说话人和授权记录，并可导出 CSV。</p>
       </div>
-      <el-button type="primary" plain size="small" @click="exportLogs">导出 CSV</el-button>
+      <el-button type="primary" plain size="small" :loading="exporting" @click="exportLogs">
+        导出 CSV
+      </el-button>
     </header>
 
     <el-form :inline="true" :model="filters" label-position="left" size="small" class="flex flex-wrap gap-3">
       <el-form-item label="事件类型">
-        <el-select v-model="filters.type" placeholder="全部">
+        <el-select v-model="filters.type" placeholder="全部" clearable>
           <el-option label="全部" value="" />
           <el-option label="指令" value="command" />
           <el-option label="报告" value="report" />
         </el-select>
       </el-form-item>
       <el-form-item label="授权状态">
-        <el-select v-model="filters.authorized" placeholder="全部">
+        <el-select v-model="filters.authorized" placeholder="全部" clearable>
           <el-option label="全部" value="" />
           <el-option label="已授权" value="true" />
           <el-option label="未授权" value="false" />
@@ -29,11 +31,18 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="displayedLogs" stripe size="small" height="360">
-      <el-table-column prop="timestamp" label="时间" width="160" />
-      <el-table-column label="类型" width="100">
+    <el-table v-loading="loading" :data="displayedLogs" stripe size="small" height="420">
+      <el-table-column type="index" width="60" label="#" />
+      <el-table-column prop="timestamp" label="时间" width="180">
         <template #default="{ row }">
-          {{ row.type === 'command' ? '指令' : '报告' }}
+          {{ formatTimestamp(row.timestamp) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="类型" width="120">
+        <template #default="{ row }">
+          <el-tag :type="row.type === 'command' ? 'warning' : 'info'" size="small">
+            {{ row.type === 'command' ? '指令' : '报告' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="operator" label="人员" width="180" />
@@ -50,59 +59,46 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import api from '@/services/apiService'
+import type { LogEntry } from '@/mocks/http'
 
-interface LogRow {
-  id: string
-  timestamp: string
-  type: 'command' | 'report'
-  operator: string
-  summary: string
-  authorized: boolean
-}
-
-const logs = ref<LogRow[]>([
-  {
-    id: 'log-1',
-    timestamp: new Date().toLocaleString(),
-    type: 'command',
-    operator: '指挥员 张伟',
-    summary: '发起倒计时指令（T-10）',
-    authorized: true,
-  },
-  {
-    id: 'log-2',
-    timestamp: new Date().toLocaleString(),
-    type: 'report',
-    operator: '巡逻员 王芳',
-    summary: '外围安全，继续巡查。',
-    authorized: true,
-  },
-  {
-    id: 'log-3',
-    timestamp: new Date().toLocaleString(),
-    type: 'command',
-    operator: '未知人员',
-    summary: '尝试在机库入口执行未授权解锁。',
-    authorized: false,
-  },
-])
+const loading = ref(false)
+const exporting = ref(false)
+const logs = ref<LogEntry[]>([])
 
 const filters = reactive({
-  type: '',
-  authorized: '',
+  type: '' as '' | 'command' | 'report',
+  authorized: '' as '' | 'true' | 'false',
 })
 
-const displayedLogs = computed(() => {
-  return logs.value.filter((log) => {
+onMounted(() => {
+  void fetchLogs()
+})
+
+async function fetchLogs() {
+  loading.value = true
+  try {
+    const response = await api.get<LogEntry[]>('/api/logs')
+    logs.value = response.data ?? []
+  } catch (error) {
+    console.error('[Logs] fetch failed', error)
+    ElMessage.error('加载日志失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const displayedLogs = computed(() =>
+  logs.value.filter((log) => {
     const matchesType = !filters.type || log.type === filters.type
     const matchesAuth =
       !filters.authorized ||
       (filters.authorized === 'true' ? log.authorized : !log.authorized)
     return matchesType && matchesAuth
-  })
-})
+  }),
+)
 
 function applyFilters() {
   ElMessage.success('筛选条件已应用')
@@ -113,7 +109,53 @@ function resetFilters() {
   filters.authorized = ''
 }
 
+function formatTimestamp(value: string) {
+  return new Date(value).toLocaleString()
+}
+
+function toCsvRow(row: string[]): string {
+  return row
+    .map((cell) => {
+      if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
+        return `"${cell.replace(/"/g, '""')}"`
+      }
+      return cell
+    })
+    .join(',')
+}
+
 function exportLogs() {
-  ElMessage.success('已触发模拟导出，待后端接入后生成 CSV。')
+  if (!displayedLogs.value.length) {
+    ElMessage.warning('当前无数据可导出')
+    return
+  }
+  exporting.value = true
+  try {
+    const header = ['时间', '类型', '人员', '摘要', '授权']
+    const rows = displayedLogs.value.map((log) => [
+      formatTimestamp(log.timestamp),
+      log.type === 'command' ? '指令' : '报告',
+      log.operator,
+      log.summary,
+      log.authorized ? '是' : '否',
+    ])
+    const csvContent = [header, ...rows].map((row) => toCsvRow(row)).join('\n')
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `logs-${Date.now()}.csv`
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    ElMessage.success('日志已导出')
+  } catch (error) {
+    console.error('[Logs] export failed', error)
+    ElMessage.error('导出失败')
+  } finally {
+    exporting.value = false
+  }
 }
 </script>

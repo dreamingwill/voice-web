@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import api from '@/services/apiService'
 
 interface Credentials {
   username: string
@@ -9,13 +10,7 @@ interface UserState {
   isAuthenticated: boolean
   operatorName: string | null
   role: string | null
-}
-
-const MOCK_ACCOUNT: Credentials & { operatorName: string; role: string } = {
-  username: 'admin',
-  password: 'voice123',
-  operatorName: '指挥员 张伟',
-  role: '主管',
+  token: string | null
 }
 
 export const useUserStore = defineStore('user', {
@@ -23,23 +18,28 @@ export const useUserStore = defineStore('user', {
     isAuthenticated: false,
     operatorName: null,
     role: null,
+    token: null,
   }),
   actions: {
-    login({ username, password }: Credentials): boolean {
-      if (username === MOCK_ACCOUNT.username && password === MOCK_ACCOUNT.password) {
+    async login({ username, password }: Credentials): Promise<boolean> {
+      try {
+        const response = await api.post('/api/login', { username, password })
+        const { token } = response.data as { token: string }
         this.isAuthenticated = true
-        this.operatorName = MOCK_ACCOUNT.operatorName
-        this.role = MOCK_ACCOUNT.role
+        this.operatorName = '指挥员 张伟'
+        this.role = '主管'
+        this.token = token
         return true
+      } catch (error) {
+        this.logout()
+        return false
       }
-
-      this.logout()
-      return false
     },
     logout() {
       this.isAuthenticated = false
       this.operatorName = null
       this.role = null
+      this.token = null
     },
   },
 })

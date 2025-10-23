@@ -5,6 +5,7 @@ import router from './router'
 import { registerElementPlus } from './plugins/element'
 import '@/styles/tailwind.css'
 import { useUserStore } from '@/stores/useUser'
+import '@/mocks/http'
 
 const app = createApp(App)
 const pinia = createPinia()

@@ -1,99 +1,226 @@
 <template>
   <section class="bg-white rounded-lg shadow p-6 space-y-5">
-    <header>
-      <h2 class="text-lg font-semibold text-primary">操作员与声纹管理</h2>
-      <p class="text-sm text-slate-600">
-        维护操作员目录，并模拟声纹采集与登记流程。
-      </p>
+    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-semibold text-primary">操作员与声纹管理</h2>
+        <p class="text-sm text-slate-600">
+          维护操作员资料、执行新增/编辑/停用等操作，并支持现场声纹登记流程。
+        </p>
+      </div>
+      <el-button type="primary" @click="openCreateDialog">
+        新增操作员
+      </el-button>
     </header>
 
-    <el-tabs v-model="activeTab">
-      <el-tab-pane label="操作员目录" name="directory">
-        <el-table :data="operators" size="small" stripe>
-          <el-table-column prop="name" label="姓名" width="160" />
-          <el-table-column prop="role" label="角色" width="150" />
-          <el-table-column prop="voiceprintId" label="声纹 ID" />
-          <el-table-column label="操作" width="140">
-            <template #default="{ row }">
-              <el-button type="primary" link size="small" @click="selectOperator(row)">
-                编辑
-              </el-button>
-              <el-button type="danger" link size="small">停用</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
+    <el-table v-loading="loading" :data="operators" border stripe>
+      <el-table-column type="index" width="60" label="#" />
+      <el-table-column prop="name" label="姓名" width="160" />
+      <el-table-column prop="role" label="角色" width="150" />
+      <el-table-column label="声纹状态" width="160">
+        <template #default="{ row }">
+          <el-tag v-if="row.voiceprintId" type="success" size="small">
+            已登记 · {{ row.voiceprintId }}
+          </el-tag>
+          <el-tag v-else type="info" size="small">
+            未登记
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="updatedAt" label="更新时间" width="200">
+        <template #default="{ row }">
+          {{ formatTime(row.updatedAt) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="260">
+        <template #default="{ row }">
+          <el-button link type="primary" size="small" @click="openEditDialog(row)">
+            编辑
+          </el-button>
+          <el-button
+            link
+            type="success"
+            size="small"
+            @click="openVoiceModal(row)"
+          >
+            声纹登记
+          </el-button>
+          <el-button
+            link
+            type="danger"
+            size="small"
+            @click="confirmDelete(row)"
+          >
+            删除
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
 
-      <el-tab-pane label="声纹登记" name="enroll">
-        <el-form :model="enrollment" label-position="top" class="max-w-md space-y-4">
-          <el-form-item label="操作员">
-            <el-select v-model="enrollment.operatorId" placeholder="请选择操作员">
-              <el-option v-for="operator in operators" :key="operator.id" :label="operator.name" :value="operator.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="采集语音样本">
-            <el-steps :active="enrollment.captureStep" finish-status="success">
-              <el-step title="环境噪声" />
-              <el-step title="关键词语音" />
-              <el-step title="结果确认" />
-            </el-steps>
-          </el-form-item>
-          <div class="flex gap-3">
-            <el-button type="primary" @click="advanceEnrollment">采集下一段</el-button>
-            <el-button @click="resetEnrollment">重置流程</el-button>
-          </div>
-        </el-form>
-      </el-tab-pane>
-    </el-tabs>
+    <el-dialog
+      v-model="isFormVisible"
+      :title="isEditing ? '编辑操作员' : '新增操作员'"
+      width="420px"
+    >
+      <el-form
+        ref="operatorFormRef"
+        :model="form"
+        :rules="formRules"
+        label-position="top"
+      >
+        <el-form-item label="姓名" prop="name">
+          <el-input v-model="form.name" placeholder="请输入操作员姓名" />
+        </el-form-item>
+        <el-form-item label="角色" prop="role">
+          <el-input v-model="form.role" placeholder="如：指挥员 / 调度员" />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <el-button @click="isFormVisible = false">取消</el-button>
+          <el-button type="primary" :loading="formSubmitting" @click="submitForm">
+            保存
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <RecordVoiceModal
+      :visible="isVoiceModalVisible"
+      :operator="voiceTarget"
+      @close="closeVoiceModal"
+      @completed="handleVoiceCompleted"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
+import api from '@/services/apiService'
+import type { Operator } from '@/mocks/http'
+import RecordVoiceModal from '@/components/admin/RecordVoiceModal.vue'
 
-interface OperatorRow {
-  id: string
-  name: string
-  role: string
-  voiceprintId: string
+const loading = ref(false)
+const operators = ref<Operator[]>([])
+const isFormVisible = ref(false)
+const formSubmitting = ref(false)
+const form = reactive<{ id: string | null; name: string; role: string }>({
+  id: null,
+  name: '',
+  role: '',
+})
+const operatorFormRef = ref<FormInstance>()
+const voiceTarget = ref<Operator | null>(null)
+const isVoiceModalVisible = ref(false)
+
+const formRules: FormRules = {
+  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  role: [{ required: true, message: '请输入角色', trigger: 'blur' }],
 }
 
-const activeTab = ref<'directory' | 'enroll'>('directory')
+const isEditing = computed(() => Boolean(form.id))
 
-const operators = ref<OperatorRow[]>([
-  { id: 'op-1', name: '张伟', role: '指挥员', voiceprintId: 'VP-88421' },
-  { id: 'op-2', name: '李强', role: '操作员', voiceprintId: 'VP-77310' },
-  { id: 'op-3', name: '王芳', role: '巡逻员', voiceprintId: 'VP-66102' },
-])
-
-const enrollment = reactive({
-  operatorId: '',
-  captureStep: 0,
+onMounted(() => {
+  void fetchOperators()
 })
 
-function selectOperator(row: OperatorRow) {
-  activeTab.value = 'enroll'
-  enrollment.operatorId = row.id
-  ElMessage.info(`已切换到 ${row.name} 的声纹登记流程`)
-}
-
-function advanceEnrollment() {
-  if (!enrollment.operatorId) {
-    ElMessage.warning('请先选择需要登记的操作员。')
-    return
-  }
-
-  if (enrollment.captureStep < 3) {
-    enrollment.captureStep += 1
-    ElMessage.success(`已完成第 ${enrollment.captureStep} / 3 段样本采集`)
-  } else {
-    ElMessage.success('声纹登记模拟完成！')
+async function fetchOperators() {
+  loading.value = true
+  try {
+    const response = await api.get<Operator[]>('/api/operators')
+    operators.value = response.data ?? []
+  } catch (error) {
+    console.error('[Operators] fetch failed', error)
+    ElMessage.error('加载操作员列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
-function resetEnrollment() {
-  enrollment.operatorId = ''
-  enrollment.captureStep = 0
+function openCreateDialog() {
+  form.id = null
+  form.name = ''
+  form.role = ''
+  isFormVisible.value = true
+  void nextTickValidate(false)
+}
+
+function openEditDialog(row: Operator) {
+  form.id = row.id
+  form.name = row.name
+  form.role = row.role
+  isFormVisible.value = true
+  void nextTickValidate(false)
+}
+
+async function nextTickValidate(clear = true) {
+  await nextTick()
+  if (clear) {
+    operatorFormRef.value?.clearValidate()
+  }
+}
+
+async function submitForm() {
+  if (!operatorFormRef.value) return
+  await operatorFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    formSubmitting.value = true
+    try {
+      if (isEditing.value && form.id) {
+        await api.put(`/api/operators/${form.id}`, {
+          name: form.name,
+          role: form.role,
+        })
+        ElMessage.success('操作员信息已更新')
+      } else {
+        await api.post('/api/operators', {
+          name: form.name,
+          role: form.role,
+        })
+        ElMessage.success('已新增操作员')
+      }
+      isFormVisible.value = false
+      await fetchOperators()
+    } catch (error) {
+      console.error('[Operators] submit failed', error)
+      ElMessage.error('保存失败，请稍后再试')
+    } finally {
+      formSubmitting.value = false
+    }
+  })
+}
+
+function confirmDelete(row: Operator) {
+  ElMessageBox.confirm(`确定要删除操作员「${row.name}」吗？`, '确认删除', {
+    type: 'warning',
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+  })
+    .then(async () => {
+      await api.delete(`/api/operators/${row.id}`)
+      ElMessage.success('已删除操作员')
+      await fetchOperators()
+    })
+    .catch(() => undefined)
+}
+
+function openVoiceModal(row: Operator) {
+  voiceTarget.value = row
+  isVoiceModalVisible.value = true
+}
+
+function closeVoiceModal() {
+  isVoiceModalVisible.value = false
+  voiceTarget.value = null
+}
+
+async function handleVoiceCompleted() {
+  await fetchOperators()
+}
+
+function formatTime(value: string) {
+  return new Date(value).toLocaleString()
 }
 </script>

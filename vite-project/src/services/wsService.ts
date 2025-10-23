@@ -283,30 +283,16 @@ export class WSService {
   }
 }
 
-const connectionStore = useConnectionStore()
-const asrStore = useAsrStore()
-const eventsStore = useEventsStore()
-const speakerStore = useSpeakerStore()
-
-function handleTranscript(segment: TranscriptSegment) {
-  asrStore.addTranscript(segment)
-}
-
-function handleSpeaker(speaker: SpeakerState) {
-  speakerStore.setSpeaker(speaker)
-}
-
-function handleEvent(event: StructuredEvent) {
-  eventsStore.pushEvent(event)
-}
-
 export function createWsService(url: string) {
   const service = new WSService({ url })
+  const connectionStore = useConnectionStore()
+  const asrStore = useAsrStore()
+  const eventsStore = useEventsStore()
+  const speakerStore = useSpeakerStore()
 
   service.onOpen(() => {
     connectionStore.setStatus('connected')
     connectionStore.setLatency(30 + Math.round(Math.random() * 20))
-    connectionStore.setSession(service['sessionId'] ?? null)
   })
 
   service.onClose(({ code }) => {
@@ -321,9 +307,15 @@ export function createWsService(url: string) {
     console.error('[createWsService] error', message)
   })
 
-  service.onTranscript(handleTranscript)
-  service.onSpeaker(handleSpeaker)
-  service.onEvent(handleEvent)
+  service.onTranscript((segment) => {
+    asrStore.addTranscript(segment)
+  })
+  service.onSpeaker((speaker) => {
+    speakerStore.setSpeaker(speaker)
+  })
+  service.onEvent((event) => {
+    eventsStore.pushEvent(event)
+  })
   service.onMeta((meta) => {
     if (typeof meta.latency === 'number') {
       connectionStore.setLatency(meta.latency)

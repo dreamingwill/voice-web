@@ -48,7 +48,7 @@ const submitting = ref(false)
 async function attemptLogin() {
   if (submitting.value) return
   submitting.value = true
-  const success = userStore.login(form)
+  const success = await userStore.login(form)
   submitting.value = false
 
   if (success) {
