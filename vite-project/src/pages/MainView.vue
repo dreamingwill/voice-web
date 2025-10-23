@@ -39,6 +39,31 @@
       </div>
     </div>
 
+    <section class="bg-white rounded-lg shadow p-4 space-y-4">
+      <header class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold text-primary">麦克风采集控制</h2>
+        <div class="flex items-center gap-3">
+          <el-button
+            type="primary"
+            :loading="isAudioLoading"
+            @click="toggleRecording"
+          >
+            {{ audioStore.isRecording ? '停止采集' : '开始采集' }}
+          </el-button>
+          <el-button
+            :disabled="!audioStore.isRecording"
+            @click="toggleMute"
+          >
+            {{ audioStore.isMuted ? '取消静音' : '静音' }}
+          </el-button>
+        </div>
+      </header>
+      <AudioLevel :level="audioStore.isMuted ? 0 : audioStore.level" />
+      <p class="text-xs text-slate-500">
+        当前状态：{{ audioStatusText }}
+      </p>
+    </section>
+
     <div class="grid gap-6 lg:grid-cols-3">
       <section class="lg:col-span-2 bg-white rounded-lg shadow p-4 flex flex-col gap-4">
         <header class="flex items-center justify-between">
@@ -80,19 +105,23 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useAsrStore } from '@/stores/useAsr'
 import { useConnectionStore } from '@/stores/useConnection'
 import { useEventsStore } from '@/stores/useEvents'
 import { useSpeakerStore } from '@/stores/useSpeaker'
+import { useAudioStore } from '@/stores/useAudio'
 import { connectMockWs, disconnectMockWs } from '@/services/wsService'
 import AlertBanner from '@/components/alerts/AlertBanner.vue'
 import CommandCard from '@/components/cards/CommandCard.vue'
 import ReportCard from '@/components/cards/ReportCard.vue'
+import AudioLevel from '@/components/audio/AudioLevel.vue'
 
 const asrStore = useAsrStore()
 const connectionStore = useConnectionStore()
 const eventsStore = useEventsStore()
 const speakerStore = useSpeakerStore()
+const audioStore = useAudioStore()
 
 const transcripts = computed(() => asrStore.transcripts)
 const events = computed(() => eventsStore.events)
@@ -145,6 +174,16 @@ const latencyText = computed(() =>
 
 const transcriptContainer = ref<HTMLElement | null>(null)
 const eventsContainer = ref<HTMLElement | null>(null)
+const isAudioLoading = ref(false)
+const audioStatusText = computed(() => {
+  if (!audioStore.isRecording) {
+    return '麦克风已停止'
+  }
+  if (audioStore.isMuted) {
+    return '麦克风静音中'
+  }
+  return '采集中，数据流将输出为 16kHz PCM'
+})
 
 onMounted(() => {
   if (connectionStore.recognitionEnabled) {
@@ -154,6 +193,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   disconnectMockWs()
+  void audioStore.stop()
 })
 
 watch(
@@ -180,5 +220,27 @@ watch(
 
 function formatTime(timestamp: string) {
   return new Date(timestamp).toLocaleTimeString()
+}
+
+async function toggleRecording() {
+  if (isAudioLoading.value) return
+  isAudioLoading.value = true
+  if (audioStore.isRecording) {
+    await audioStore.stop()
+    ElMessage.success('已停止音频采集')
+  } else {
+    const ok = await audioStore.start()
+    if (!ok) {
+      ElMessage.error(audioStore.error ?? '启动麦克风失败')
+    } else {
+      ElMessage.success('音频采集已开始')
+    }
+  }
+  isAudioLoading.value = false
+}
+
+async function toggleMute() {
+  await audioStore.toggleMute()
+  ElMessage.info(audioStore.isMuted ? '已静音麦克风' : '已恢复麦克风')
 }
 </script>
