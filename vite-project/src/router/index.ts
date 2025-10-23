@@ -1,5 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+  }
+}
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -7,6 +13,7 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: () => import('@/pages/MainView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/login',
@@ -17,11 +24,13 @@ const router = createRouter({
       path: '/admin/operators',
       name: 'admin-operators',
       component: () => import('@/pages/admin/Operators.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/admin/logs',
       name: 'admin-logs',
       component: () => import('@/pages/admin/Logs.vue'),
+      meta: { requiresAuth: true },
     },
   ],
 })
