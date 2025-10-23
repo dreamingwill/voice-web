@@ -111,7 +111,7 @@ import { useConnectionStore } from '@/stores/useConnection'
 import { useEventsStore } from '@/stores/useEvents'
 import { useSpeakerStore } from '@/stores/useSpeaker'
 import { useAudioStore } from '@/stores/useAudio'
-import { connectMockWs, disconnectMockWs } from '@/services/wsService'
+import { startRealtimeMock, stopRealtimeMock } from '@/services/wsMockService'
 import AlertBanner from '@/components/alerts/AlertBanner.vue'
 import CommandCard from '@/components/cards/CommandCard.vue'
 import ReportCard from '@/components/cards/ReportCard.vue'
@@ -130,9 +130,9 @@ const recognitionSwitch = computed({
   set: (value: boolean) => {
     connectionStore.setRecognitionEnabled(value)
     if (value) {
-      connectMockWs()
+      startRealtimeMock()
     } else {
-      disconnectMockWs()
+      stopRealtimeMock()
     }
   },
 })
@@ -187,12 +187,12 @@ const audioStatusText = computed(() => {
 
 onMounted(() => {
   if (connectionStore.recognitionEnabled) {
-    connectMockWs()
+    startRealtimeMock()
   }
 })
 
 onBeforeUnmount(() => {
-  disconnectMockWs()
+  stopRealtimeMock()
   void audioStore.stop()
 })
 
