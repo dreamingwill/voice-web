@@ -30,6 +30,13 @@
           {{ latencyText }}
         </p>
       </div>
+      <div class="flex items-center gap-2">
+        <el-switch
+          v-model="recognitionSwitch"
+          active-text="识别开启"
+          inactive-text="识别关闭"
+        />
+      </div>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-3">
@@ -89,6 +96,17 @@ const speakerStore = useSpeakerStore()
 
 const transcripts = computed(() => asrStore.transcripts)
 const events = computed(() => eventsStore.events)
+const recognitionSwitch = computed({
+  get: () => connectionStore.recognitionEnabled,
+  set: (value: boolean) => {
+    connectionStore.setRecognitionEnabled(value)
+    if (value) {
+      connectMockWs()
+    } else {
+      disconnectMockWs()
+    }
+  },
+})
 
 const connectionLabel = computed(() => {
   switch (connectionStore.status) {
@@ -129,7 +147,9 @@ const transcriptContainer = ref<HTMLElement | null>(null)
 const eventsContainer = ref<HTMLElement | null>(null)
 
 onMounted(() => {
-  connectMockWs()
+  if (connectionStore.recognitionEnabled) {
+    connectMockWs()
+  }
 })
 
 onBeforeUnmount(() => {

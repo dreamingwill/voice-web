@@ -101,6 +101,7 @@ let transcriptInterval: ReturnType<typeof setInterval> | null = null
 let eventInterval: ReturnType<typeof setInterval> | null = null
 let latencyInterval: ReturnType<typeof setInterval> | null = null
 let activeSpeakerIndex = 0
+let connectTimeout: ReturnType<typeof setTimeout> | null = null
 
 export function connectMockWs() {
   const connectionStore = useConnectionStore()
@@ -120,10 +121,20 @@ export function connectMockWs() {
     return
   }
 
+  if (!connectionStore.recognitionEnabled) {
+    connectionStore.setStatus('disconnected')
+    return
+  }
+
   connectionStore.setStatus('connecting')
   connectionStore.setSession(`session-${Math.random().toString(36).slice(2, 8)}`)
 
-  setTimeout(() => {
+  connectTimeout = setTimeout(() => {
+    if (!connectionStore.recognitionEnabled) {
+      connectionStore.setStatus('disconnected')
+      connectionStore.setLatency(null)
+      return
+    }
     connectionStore.setStatus('connected')
     connectionStore.setLatency(32 + Math.round(Math.random() * 18))
   }, 600)
@@ -164,6 +175,10 @@ export function disconnectMockWs() {
   const connectionStore = useConnectionStore()
   const speakerStore = useSpeakerStore()
 
+  if (connectTimeout) {
+    clearTimeout(connectTimeout)
+    connectTimeout = null
+  }
   if (transcriptInterval) {
     clearInterval(transcriptInterval)
     transcriptInterval = null
@@ -179,4 +194,5 @@ export function disconnectMockWs() {
 
   connectionStore.reset()
   speakerStore.reset()
+  activeSpeakerIndex = 0
 }
