@@ -14,21 +14,20 @@
 
     <el-table v-loading="loading" :data="operators" border stripe>
       <el-table-column type="index" width="60" label="#" />
-      <el-table-column prop="name" label="姓名" width="160" />
-      <el-table-column prop="role" label="角色" width="150" />
+      <el-table-column prop="username" label="用户名" width="160" />
+      <el-table-column label="角色" width="150">
+        <template #default="{ row }">
+          {{ row.identity ?? '—' }}
+        </template>
+      </el-table-column>
       <el-table-column label="声纹状态" width="160">
         <template #default="{ row }">
-          <el-tag v-if="row.voiceprintId" type="success" size="small">
-            已登记 · {{ row.voiceprintId }}
+          <el-tag v-if="row.has_voiceprint" type="success" size="small">
+            已登记
           </el-tag>
           <el-tag v-else type="info" size="small">
             未登记
           </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="updatedAt" label="更新时间" width="200">
-        <template #default="{ row }">
-          {{ formatTime(row.updatedAt) }}
         </template>
       </el-table-column>
       <el-table-column label="操作" width="260">
@@ -67,11 +66,11 @@
         :rules="formRules"
         label-position="top"
       >
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="form.name" placeholder="请输入操作员姓名" />
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="form.username" placeholder="用于登录的唯一标识" />
         </el-form-item>
-        <el-form-item label="角色" prop="role">
-          <el-input v-model="form.role" placeholder="如：指挥员 / 调度员" />
+        <el-form-item label="角色" prop="identity">
+          <el-input v-model="form.identity" placeholder="如：指挥员 / 调度员" />
         </el-form-item>
       </el-form>
 
@@ -99,25 +98,31 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import api from '@/services/apiService'
-import type { Operator } from '@/mocks/http'
 import RecordVoiceModal from '@/components/admin/RecordVoiceModal.vue'
 
 const loading = ref(false)
+interface Operator {
+  id: number
+  username: string
+  identity?: string | null
+  has_voiceprint: boolean
+}
+
 const operators = ref<Operator[]>([])
 const isFormVisible = ref(false)
 const formSubmitting = ref(false)
-const form = reactive<{ id: string | null; name: string; role: string }>({
+const form = reactive<{ id: number | null; username: string; identity: string }>({
   id: null,
-  name: '',
-  role: '',
+  username: '',
+  identity: '',
 })
 const operatorFormRef = ref<FormInstance>()
 const voiceTarget = ref<Operator | null>(null)
 const isVoiceModalVisible = ref(false)
 
 const formRules: FormRules = {
-  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  role: [{ required: true, message: '请输入角色', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  identity: [{ required: true, message: '请输入角色', trigger: 'blur' }],
 }
 
 const isEditing = computed(() => Boolean(form.id))
@@ -129,7 +134,7 @@ onMounted(() => {
 async function fetchOperators() {
   loading.value = true
   try {
-    const response = await api.get<Operator[]>('/api/operators')
+    const response = await api.get<Operator[]>('/users')
     operators.value = response.data ?? []
   } catch (error) {
     console.error('[Operators] fetch failed', error)
@@ -141,16 +146,16 @@ async function fetchOperators() {
 
 function openCreateDialog() {
   form.id = null
-  form.name = ''
-  form.role = ''
+  form.username = ''
+  form.identity = ''
   isFormVisible.value = true
   void nextTickValidate(false)
 }
 
 function openEditDialog(row: Operator) {
   form.id = row.id
-  form.name = row.name
-  form.role = row.role
+  form.username = row.username
+  form.identity = row.identity ?? ''
   isFormVisible.value = true
   void nextTickValidate(false)
 }
@@ -169,15 +174,15 @@ async function submitForm() {
     formSubmitting.value = true
     try {
       if (isEditing.value && form.id) {
-        await api.put(`/api/operators/${form.id}`, {
-          name: form.name,
-          role: form.role,
+        await api.patch(`/users/${form.id}`, {
+          username: form.username,
+          identity: form.identity,
         })
         ElMessage.success('操作员信息已更新')
       } else {
-        await api.post('/api/operators', {
-          name: form.name,
-          role: form.role,
+        await api.post('/users', {
+          username: form.username,
+          identity: form.identity,
         })
         ElMessage.success('已新增操作员')
       }
@@ -193,13 +198,13 @@ async function submitForm() {
 }
 
 function confirmDelete(row: Operator) {
-  ElMessageBox.confirm(`确定要删除操作员「${row.name}」吗？`, '确认删除', {
+  ElMessageBox.confirm(`确定要删除操作员「${row.username}」吗？`, '确认删除', {
     type: 'warning',
     confirmButtonText: '删除',
     cancelButtonText: '取消',
   })
     .then(async () => {
-      await api.delete(`/api/operators/${row.id}`)
+      await api.delete(`/users/${row.id}`)
       ElMessage.success('已删除操作员')
       await fetchOperators()
     })
@@ -218,9 +223,5 @@ function closeVoiceModal() {
 
 async function handleVoiceCompleted() {
   await fetchOperators()
-}
-
-function formatTime(value: string) {
-  return new Date(value).toLocaleString()
 }
 </script>

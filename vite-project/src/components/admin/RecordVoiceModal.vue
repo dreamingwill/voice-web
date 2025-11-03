@@ -8,7 +8,7 @@
   >
     <template #header>
       <div class="font-semibold text-base">
-        声纹登记 - {{ operator?.name ?? '未知操作员' }}
+        声纹登记 - {{ operator?.username ?? '未知操作员' }}
       </div>
     </template>
 
@@ -109,8 +109,9 @@ import api from '@/services/apiService'
 interface Props {
   visible: boolean
   operator: {
-    id: string
-    name: string
+    id: number
+    username: string
+    identity?: string | null
   } | null
 }
 
@@ -394,11 +395,10 @@ async function submitSamples() {
   try {
     const formData = new FormData()
     completedSamples.value.forEach((sample, index) => {
-      formData.append(`sample_${index + 1}`, sample.blob, `sample-${index + 1}.wav`)
+      formData.append('files', sample.blob, `sample-${index + 1}.wav`)
     })
-    await api.post('/api/voiceprints/register', formData, {
+    await api.post(`/users/${props.operator.id}/voiceprint/aggregate`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      params: { operatorId: props.operator.id },
     })
     ElMessage.success('声纹登记成功')
     emit('completed')

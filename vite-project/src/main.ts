@@ -5,22 +5,24 @@ import router from './router'
 import { registerElementPlus } from './plugins/element'
 import '@/styles/tailwind.css'
 import { useUserStore } from '@/stores/useUser'
-import '@/mocks/http'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+const userStore = useUserStore(pinia)
+userStore.initialize()
+
 app.use(router)
 registerElementPlus(app)
 
 router.beforeEach((to, _from, next) => {
-  const userStore = useUserStore()
-  if (to.name === 'login' && userStore.isAuthenticated) {
+  const store = useUserStore()
+  if (to.name === 'login' && store.isAuthenticated) {
     next({ name: 'home' })
     return
   }
-  if (to.meta.requiresAuth && !userStore.isAuthenticated) {
+  if (to.meta.requiresAuth && !store.isAuthenticated) {
     next({ name: 'login' })
     return
   }

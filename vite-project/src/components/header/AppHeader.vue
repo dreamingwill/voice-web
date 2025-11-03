@@ -26,7 +26,10 @@
       <div class="flex items-center gap-3 text-sm">
         <template v-if="userStore.isAuthenticated">
           <span class="text-emerald-100">
-            {{ userStore.operatorName }} ({{ userStore.role }})
+            {{ userStore.operatorName ?? '已登录' }}
+            <template v-if="userStore.role">
+              ({{ userStore.role }})
+            </template>
           </span>
           <el-button type="primary" plain size="small" @click="logout">
             退出登录
