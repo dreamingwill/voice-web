@@ -7,6 +7,7 @@
 
       <nav v-if="userStore.isAuthenticated" class="flex items-center gap-4 text-sm">
         <RouterLink class="hover:underline" :class="linkClass('/')" to="/">实时监控</RouterLink>
+        
         <RouterLink
           class="hover:underline"
           :class="linkClass('/admin/operators')"
@@ -14,6 +15,7 @@
         >
           操作员管理
         </RouterLink>
+        
         <RouterLink
           class="hover:underline"
           :class="linkClass('/admin/logs')"

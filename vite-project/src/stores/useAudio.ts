@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { audioService } from '@/services/audioService'
+import { notifyAudioStopped } from '@/services/realtimeClient'
 
 export const useAudioStore = defineStore('audio', () => {
   const isRecording = ref(false)
@@ -50,7 +51,11 @@ export const useAudioStore = defineStore('audio', () => {
   }
 
   const stop = async () => {
+    const wasRecording = isRecording.value
     await audioService.stop()
+    if (wasRecording) {
+      notifyAudioStopped()
+    }
     disposeSubscriptions()
     isRecording.value = false
     isMuted.value = audioService.isMuted

@@ -4,9 +4,11 @@ import { useEventsStore } from '@/stores/useEvents'
 import { useSpeakerStore } from '@/stores/useSpeaker'
 import type {
   StructuredEvent,
-  TranscriptSegment,
   SpeakerState,
   WsInboundMessage,
+  PartialTranscriptMessage,
+  FinalTranscriptMessage,
+  SimilarityCandidate,
 } from '@/types/realtime'
 
 interface WSServiceOptions {
@@ -19,6 +21,16 @@ interface WSServiceOptions {
 type Listener<T> = (payload: T) => void
 
 type WsReadyState = 'idle' | 'connecting' | 'open' | 'closing' | 'closed'
+
+interface ConnectOptions {
+  token?: string
+  operator?: {
+    id?: number
+    name?: string
+    username?: string
+  }
+  locale?: string
+}
 
 const DEFAULT_OPTIONS: Required<Pick<WSServiceOptions, 'heartbeatInterval' | 'reconnectDelay' | 'maxReconnectDelay'>> = {
   heartbeatInterval: 20_000,
@@ -41,8 +53,12 @@ export class WSService {
   private shouldReconnect = false
   private manualClose = false
   private sessionId: string | null = null
+  private token: string | null = null
+  private operatorInfo: ConnectOptions['operator'] = null
+  private locale: string | null = null
 
-  private readonly transcriptListeners = new Set<Listener<TranscriptSegment>>()
+  private readonly partialListeners = new Set<Listener<PartialTranscriptMessage>>()
+  private readonly finalListeners = new Set<Listener<FinalTranscriptMessage>>()
   private readonly speakerListeners = new Set<Listener<SpeakerState>>()
   private readonly eventListeners = new Set<Listener<StructuredEvent>>()
   private readonly metaListeners = new Set<Listener<Record<string, unknown>>>()
@@ -61,12 +77,15 @@ export class WSService {
     return this.readyState
   }
 
-  connect(sessionId: string) {
+  connect(sessionId: string, options?: ConnectOptions) {
     if (this.readyState === 'connecting' || this.readyState === 'open') {
       return
     }
 
     this.sessionId = sessionId
+    this.token = options?.token ?? null
+    this.operatorInfo = options?.operator ?? null
+    this.locale = options?.locale ?? null
     this.readyState = 'connecting'
     this.manualClose = false
     this.shouldReconnect = true
@@ -94,6 +113,9 @@ export class WSService {
             format: 'PCM16',
             channels: 1,
             sessionId: this.sessionId,
+            token: this.token ?? undefined,
+            operator: this.operatorInfo ?? undefined,
+            locale: this.locale ?? 'zh-CN',
           },
         })
       }
@@ -134,15 +156,26 @@ export class WSService {
     }
   }
 
+  sendText(text: string) {
+    if (this.socket && this.readyState === 'open') {
+      this.socket.send(text)
+    }
+  }
+
   sendBinary(buffer: ArrayBufferLike) {
     if (this.socket && this.readyState === 'open') {
       this.socket.send(buffer)
     }
   }
 
-  onTranscript(listener: Listener<TranscriptSegment>) {
-    this.transcriptListeners.add(listener)
-    return () => this.transcriptListeners.delete(listener)
+  onPartial(listener: Listener<PartialTranscriptMessage>) {
+    this.partialListeners.add(listener)
+    return () => this.partialListeners.delete(listener)
+  }
+
+  onFinal(listener: Listener<FinalTranscriptMessage>) {
+    this.finalListeners.add(listener)
+    return () => this.finalListeners.delete(listener)
   }
 
   onSpeaker(listener: Listener<SpeakerState>) {
@@ -199,11 +232,34 @@ export class WSService {
     }
 
     switch (parsed.type) {
-      case 'transcript':
-        if (parsed.data) {
-          this.transcriptListeners.forEach((listener) => listener(parsed.data))
-        }
+      case 'partial':
+        this.partialListeners.forEach((listener) => listener(parsed))
         break
+      case 'final': {
+        const normalized: FinalTranscriptMessage = {
+          ...parsed,
+          topk: Array.isArray(parsed.topk)
+            ? parsed.topk.map((item) => {
+                if (typeof item === 'object' && item !== null && 'username' in item && 'similarity' in item) {
+                  return {
+                    username: String((item as SimilarityCandidate).username),
+                    similarity: Number((item as SimilarityCandidate).similarity ?? 0),
+                  }
+                }
+                if (Array.isArray(item)) {
+                  const [username, similarity] = item
+                  return {
+                    username: typeof username === 'string' ? username : String(username),
+                    similarity: Number(similarity ?? 0),
+                  }
+                }
+                return undefined
+              }).filter((entry): entry is SimilarityCandidate => Boolean(entry))
+            : undefined,
+        }
+        this.finalListeners.forEach((listener) => listener(normalized))
+        break
+      }
       case 'speaker':
         if (parsed.data) {
           this.speakerListeners.forEach((listener) => listener(parsed.data))
@@ -263,7 +319,11 @@ export class WSService {
     const delay = Math.min(this.reconnectDelay, this.maxReconnectDelay)
     this.reconnectTimer = setTimeout(() => {
       if (this.sessionId) {
-        this.connect(this.sessionId)
+        this.connect(this.sessionId, {
+          token: this.token ?? undefined,
+          operator: this.operatorInfo ?? undefined,
+          locale: this.locale ?? undefined,
+        })
         this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay)
       }
     }, delay)
@@ -292,7 +352,7 @@ export function createWsService(url: string) {
 
   service.onOpen(() => {
     connectionStore.setStatus('connected')
-    connectionStore.setLatency(30 + Math.round(Math.random() * 20))
+    connectionStore.setLatency(null)
   })
 
   service.onClose(({ code }) => {
@@ -307,8 +367,28 @@ export function createWsService(url: string) {
     console.error('[createWsService] error', message)
   })
 
-  service.onTranscript((segment) => {
-    asrStore.addTranscript(segment)
+  service.onPartial((message) => {
+    asrStore.upsertSegment({
+      segmentId: message.segment_id,
+      text: message.text,
+      speaker: message.speaker !== 'unknown' ? message.speaker : undefined,
+      finalized: false,
+      startMs: message.start_ms,
+      timestamp: new Date().toISOString(),
+    })
+  })
+
+  service.onFinal((message) => {
+    asrStore.upsertSegment({
+      segmentId: message.segment_id,
+      text: message.text,
+      speaker: message.speaker !== 'unknown' ? message.speaker : undefined,
+      finalized: true,
+      startMs: message.start_ms,
+      endMs: message.end_ms,
+      similarity: message.similarity,
+      timestamp: new Date().toISOString(),
+    })
   })
   service.onSpeaker((speaker) => {
     speakerStore.setSpeaker(speaker)

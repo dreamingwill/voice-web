@@ -1,16 +1,56 @@
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected'
 
+export interface SimilarityCandidate {
+  username: string
+  similarity: number
+}
+
+export interface PartialTranscriptMessage {
+  type: 'partial'
+  segment_id: number
+  text: string
+  speaker: string
+  start_ms: number
+  time_ms: number
+}
+
+export interface FinalTranscriptMessage {
+  type: 'final'
+  segment_id: number
+  text: string
+  speaker: string
+  start_ms: number
+  end_ms: number
+  similarity?: number
+  topk?: SimilarityCandidate[]
+}
+
 export type WsInboundMessage =
-  | { type: 'transcript'; data: TranscriptSegment }
+  | PartialTranscriptMessage
+  | FinalTranscriptMessage
   | { type: 'speaker'; data: SpeakerState }
   | { type: 'event'; data: StructuredEvent }
   | { type: 'meta'; data: Record<string, unknown> }
   | { type: 'error'; error: string; code?: string | number }
 
+export interface AudioStartPayload {
+  sampleRate: number
+  format: 'PCM16'
+  channels: 1
+  sessionId: string
+  token?: string
+  operator?: {
+    id?: number
+    name?: string
+    username?: string
+  }
+  locale?: string
+}
+
 export type WsOutboundMessage =
   | {
       type: 'audio.start'
-      data: { sampleRate: number; format: 'PCM16'; channels: 1; sessionId: string }
+      data: AudioStartPayload
     }
   | { type: 'audio.stop' }
   | { type: 'control.ping' }
@@ -19,9 +59,14 @@ export type WsOutboundMessage =
 
 export interface TranscriptSegment {
   id: string
+  segmentId: number
   text: string
   timestamp: string
   speaker?: string
+  finalized: boolean
+  startMs?: number
+  endMs?: number
+  similarity?: number
 }
 
 export interface SpeakerState {

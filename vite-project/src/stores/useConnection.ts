@@ -5,7 +5,6 @@ interface ConnectionState {
   status: ConnectionStatus
   latencyMs: number | null
   sessionId: string | null
-  recognitionEnabled: boolean
 }
 
 export const useConnectionStore = defineStore('connection', {
@@ -13,7 +12,6 @@ export const useConnectionStore = defineStore('connection', {
     status: 'disconnected',
     latencyMs: null,
     sessionId: null,
-    recognitionEnabled: true,
   }),
   getters: {
     isConnected: (state) => state.status === 'connected',
@@ -27,9 +25,6 @@ export const useConnectionStore = defineStore('connection', {
     },
     setSession(sessionId: string | null) {
       this.sessionId = sessionId
-    },
-    setRecognitionEnabled(enabled: boolean) {
-      this.recognitionEnabled = enabled
     },
     reset() {
       this.status = 'disconnected'

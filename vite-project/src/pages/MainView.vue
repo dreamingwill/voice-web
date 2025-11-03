@@ -30,13 +30,6 @@
           {{ latencyText }}
         </p>
       </div>
-      <div class="flex items-center gap-2">
-        <el-switch
-          v-model="recognitionSwitch"
-          active-text="识别开启"
-          inactive-text="识别关闭"
-        />
-      </div>
     </div>
 
     <section class="bg-white rounded-lg shadow p-4 space-y-4">
@@ -80,7 +73,12 @@
               <span>{{ segment.speaker ?? '未知说话人' }}</span>
               <time>{{ formatTime(segment.timestamp) }}</time>
             </header>
-            <p class="text-sm text-slate-800 mt-1">{{ segment.text }}</p>
+            <p
+              class="text-sm mt-1"
+              :class="segment.finalized ? 'text-slate-800' : 'text-slate-500 italic'"
+            >
+              {{ segment.text }}
+            </p>
           </article>
           <el-empty v-if="!transcripts.length" description="暂无转写数据" />
         </div>
@@ -104,14 +102,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAsrStore } from '@/stores/useAsr'
 import { useConnectionStore } from '@/stores/useConnection'
 import { useEventsStore } from '@/stores/useEvents'
 import { useSpeakerStore } from '@/stores/useSpeaker'
 import { useAudioStore } from '@/stores/useAudio'
-import { startRealtimeMock, stopRealtimeMock } from '@/services/wsMockService'
+import { startRealtimeStreaming, stopRealtimeStreaming } from '@/services/realtimeClient'
 import AlertBanner from '@/components/alerts/AlertBanner.vue'
 import CommandCard from '@/components/cards/CommandCard.vue'
 import ReportCard from '@/components/cards/ReportCard.vue'
@@ -125,18 +123,6 @@ const audioStore = useAudioStore()
 
 const transcripts = computed(() => asrStore.transcripts)
 const events = computed(() => eventsStore.events)
-const recognitionSwitch = computed({
-  get: () => connectionStore.recognitionEnabled,
-  set: (value: boolean) => {
-    connectionStore.setRecognitionEnabled(value)
-    if (value) {
-      startRealtimeMock()
-    } else {
-      stopRealtimeMock()
-    }
-  },
-})
-
 const connectionLabel = computed(() => {
   switch (connectionStore.status) {
     case 'connected':
@@ -185,15 +171,11 @@ const audioStatusText = computed(() => {
   return '采集中，数据流将输出为 16kHz PCM'
 })
 
-onMounted(() => {
-  if (connectionStore.recognitionEnabled) {
-    startRealtimeMock()
-  }
-})
-
 onBeforeUnmount(() => {
-  stopRealtimeMock()
   void audioStore.stop()
+  stopRealtimeStreaming(false)
+  connectionStore.reset()
+  speakerStore.reset()
 })
 
 watch(
@@ -227,10 +209,18 @@ async function toggleRecording() {
   isAudioLoading.value = true
   if (audioStore.isRecording) {
     await audioStore.stop()
+    stopRealtimeStreaming(false)
+    connectionStore.reset()
+    speakerStore.reset()
     ElMessage.success('已停止音频采集')
   } else {
+    connectionStore.setStatus('connecting')
+    startRealtimeStreaming()
     const ok = await audioStore.start()
     if (!ok) {
+      stopRealtimeStreaming(false)
+      connectionStore.reset()
+      speakerStore.reset()
       ElMessage.error(audioStore.error ?? '启动麦克风失败')
     } else {
       ElMessage.success('音频采集已开始')
