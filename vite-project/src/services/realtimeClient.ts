@@ -57,7 +57,7 @@ export function startRealtimeStreaming() {
 export function stopRealtimeStreaming(sendDone = false) {
   const ws = wsInstance
   if (sendDone && ws && ws.state === 'open') {
-    ws.sendText('DONE')
+    ws.sendJson({ type: 'audio.stop' })
   }
 
   if (ws) {
@@ -79,6 +79,6 @@ export function stopRealtimeStreaming(sendDone = false) {
 export function notifyAudioStopped() {
   const ws = wsInstance
   if (ws && ws.state === 'open') {
-    ws.sendText('DONE')
+    ws.sendJson({ type: 'audio.stop' })
   }
 }

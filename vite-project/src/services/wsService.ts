@@ -376,6 +376,21 @@ export function createWsService(url: string) {
       startMs: message.start_ms,
       timestamp: new Date().toISOString(),
     })
+    const uiSegment = asrStore.transcripts.find((item) => item.segmentId === message.segment_id)
+    console.log('[asr-debug][partial]', {
+      server: {
+        segment: message.segment_id,
+        speaker: message.speaker,
+        text: message.text,
+      },
+      ui: uiSegment
+        ? {
+            segment: uiSegment.segmentId,
+            speaker: uiSegment.speaker ?? 'unknown',
+            text: uiSegment.text,
+          }
+        : null,
+    })
   })
 
   service.onFinal((message) => {
@@ -389,8 +404,26 @@ export function createWsService(url: string) {
       similarity: message.similarity,
       timestamp: new Date().toISOString(),
     })
+    const uiSegment = asrStore.transcripts.find((item) => item.segmentId === message.segment_id)
+    console.log('[asr-debug][final]', {
+      server: {
+        segment: message.segment_id,
+        speaker: message.speaker,
+        text: message.text,
+        similarity: message.similarity,
+      },
+      ui: uiSegment
+        ? {
+            segment: uiSegment.segmentId,
+            speaker: uiSegment.speaker ?? 'unknown',
+            text: uiSegment.text,
+            similarity: uiSegment.similarity,
+          }
+        : null,
+    })
   })
   service.onSpeaker((speaker) => {
+    console.log('[asr-debug][speaker]', speaker)
     speakerStore.setSpeaker(speaker)
   })
   service.onEvent((event) => {
