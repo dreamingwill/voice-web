@@ -36,13 +36,6 @@
           {{ formatTimestamp(row.timestamp) }}
         </template>
       </el-table-column>
-      <el-table-column label="类型" width="120">
-        <template #default="{ row }">
-          <el-tag :type="getTypeTag(row.type)" size="small">
-            {{ formatTypeLabel(row.type) }}
-          </el-tag>
-        </template>
-      </el-table-column>
       <el-table-column label="类别" width="140">
         <template #default="{ row }">
           {{ formatCategoryLabel(row.category) }}
@@ -61,13 +54,6 @@
       <el-table-column label="摘要">
         <template #default="{ row }">
           {{ getSummary(row) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="是否授权" width="140">
-        <template #default="{ row }">
-          <el-tag v-if="row.authorized === true" type="success" size="small">是</el-tag>
-          <el-tag v-else-if="row.authorized === false" type="danger" size="small">否</el-tag>
-          <span v-else class="text-slate-400 text-xs">未知</span>
         </template>
       </el-table-column>
     </el-table>
@@ -197,15 +183,13 @@ function exportLogs() {
   }
   exporting.value = true
   try {
-    const header = ['时间', '类型', '类别', '操作者', '关联对象', '摘要', '授权']
+    const header = ['时间', '类别', '操作者', '关联对象', '摘要']
     const rows = displayedLogs.value.map((log) => [
       formatTimestamp(log.timestamp),
-      formatTypeLabel(log.type),
       formatCategoryLabel(log.category),
       log.operator ?? '',
       getTargetLabel(log),
       getSummary(log),
-      log.authorized === true ? '是' : log.authorized === false ? '否' : '未知',
     ])
     const csvContent = [header, ...rows].map((row) => toCsvRow(row)).join('\n')
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -225,18 +209,6 @@ function exportLogs() {
   } finally {
     exporting.value = false
   }
-}
-
-function formatTypeLabel(type: string) {
-  if (type === 'operator_change') return '操作事件'
-  if (type === 'transcript') return '语音事件'
-  return type
-}
-
-function getTypeTag(type: string) {
-  if (type === 'operator_change') return 'primary'
-  if (type === 'transcript') return 'success'
-  return 'info'
 }
 
 function formatCategoryLabel(category?: string | null) {

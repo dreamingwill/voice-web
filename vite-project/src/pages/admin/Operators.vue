@@ -18,7 +18,7 @@
         placeholder="按用户名模糊搜索"
         clearable
         class="w-60"
-        @keyup.enter="applySearch"
+        @keyup.enter.native="applySearch"
         @clear="handleSearchReset"
       />
       <el-button type="primary" @click="applySearch">查询</el-button>
@@ -27,10 +27,23 @@
 
     <el-table v-loading="loading" :data="operators" border stripe>
       <el-table-column type="index" width="60" label="#" />
-      <el-table-column prop="username" label="用户名" width="160" />
+      <el-table-column prop="account" label="账号" width="160" />
+      <el-table-column prop="username" label="姓名" width="140" />
       <el-table-column label="角色" width="150">
         <template #default="{ row }">
           {{ row.identity ?? '—' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="phone" label="手机号" width="160">
+        <template #default="{ row }">
+          {{ row.phone ?? '—' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" width="140">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" size="small">
+            {{ row.status === 'enabled' ? '启用' : '禁用' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="声纹状态" width="160">
@@ -43,7 +56,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="260">
+      <el-table-column label="操作" width="320">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="openEditDialog(row)">
             编辑
@@ -63,6 +76,14 @@
             @click="confirmDelete(row)"
           >
             删除
+          </el-button>
+          <el-button
+            link
+            :type="row.status === 'enabled' ? 'warning' : 'success'"
+            size="small"
+            @click="toggleStatus(row)"
+          >
+            {{ row.status === 'enabled' ? '禁用' : '启用' }}
           </el-button>
         </template>
       </el-table-column>
@@ -85,19 +106,26 @@
     <el-dialog
       v-model="isFormVisible"
       :title="isEditing ? '编辑操作员' : '新增操作员'"
-      width="420px"
+      width="min(420px, 92vw)"
     >
       <el-form
         ref="operatorFormRef"
         :model="form"
         :rules="formRules"
         label-position="top"
+        class="operator-form"
       >
+        <el-form-item label="账号" prop="account">
+          <el-input v-model="form.account" placeholder="唯一账号，例如 employee01" />
+        </el-form-item>
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="用于登录的唯一标识" />
         </el-form-item>
         <el-form-item label="角色" prop="identity">
           <el-input v-model="form.identity" placeholder="如：指挥员 / 调度员" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="form.phone" placeholder="可选，11位手机号" maxlength="20" />
         </el-form-item>
       </el-form>
 
@@ -130,8 +158,11 @@ import RecordVoiceModal from '@/components/admin/RecordVoiceModal.vue'
 const loading = ref(false)
 interface Operator {
   id: number
+  account: string
   username: string
   identity?: string | null
+  phone?: string | null
+  status: 'enabled' | 'disabled'
   has_voiceprint: boolean
 }
 
@@ -145,10 +176,12 @@ interface OperatorListResponse {
 const operators = ref<Operator[]>([])
 const isFormVisible = ref(false)
 const formSubmitting = ref(false)
-const form = reactive<{ id: number | null; username: string; identity: string }>({
+const form = reactive<{ id: number | null; account: string; username: string; identity: string; phone: string }>({
   id: null,
+  account: '',
   username: '',
   identity: '',
+  phone: '',
 })
 const operatorFormRef = ref<FormInstance>()
 const voiceTarget = ref<Operator | null>(null)
@@ -163,6 +196,7 @@ const filters = reactive({
 })
 
 const formRules: FormRules = {
+  account: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   identity: [{ required: true, message: '请输入角色', trigger: 'blur' }],
 }
@@ -196,16 +230,20 @@ async function fetchOperators() {
 
 function openCreateDialog() {
   form.id = null
+  form.account = ''
   form.username = ''
   form.identity = ''
+  form.phone = ''
   isFormVisible.value = true
   void nextTickValidate(false)
 }
 
 function openEditDialog(row: Operator) {
   form.id = row.id
+  form.account = row.account
   form.username = row.username
   form.identity = row.identity ?? ''
+  form.phone = row.phone ?? ''
   isFormVisible.value = true
   void nextTickValidate(false)
 }
@@ -225,14 +263,18 @@ async function submitForm() {
     try {
       if (isEditing.value && form.id) {
         await api.patch(`/api/users/${form.id}`, {
+          account: form.account,
           username: form.username,
           identity: form.identity,
+          phone: form.phone || null,
         })
         ElMessage.success('操作员信息已更新')
       } else {
         await api.post('/api/users', {
+          account: form.account,
           username: form.username,
           identity: form.identity,
+          phone: form.phone || null,
         })
         ElMessage.success('已新增操作员')
         pagination.page = 1
@@ -297,4 +339,24 @@ function handleSearchReset() {
   pagination.page = 1
   void fetchOperators()
 }
+
+async function toggleStatus(row: Operator) {
+  const targetStatus = row.status === 'enabled' ? 'disabled' : 'enabled'
+  try {
+    await api.post(`/api/users/${row.id}/status`, { status: targetStatus })
+    ElMessage.success(targetStatus === 'enabled' ? '已启用该操作员' : '已禁用该操作员')
+    await fetchOperators()
+  } catch (error) {
+    console.error('[Operators] toggle status failed', error)
+    ElMessage.error('更新状态失败')
+  }
+}
 </script>
+
+<style scoped>
+.operator-form {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+</style>

@@ -24,12 +24,12 @@
           <p class="text-xs text-slate-500">角色：{{ speakerRole }}</p>
         </div>
       </div>
-      <div class="text-right">
+      <!-- <div class="text-right">
         <p class="text-xs tracking-wide text-slate-500">网络延迟</p>
         <p class="text-sm font-semibold text-slate-700">
           {{ latencyText }}
         </p>
-      </div>
+      </div> -->
     </div>
 
     <section class="bg-white rounded-lg shadow p-4 space-y-4">
