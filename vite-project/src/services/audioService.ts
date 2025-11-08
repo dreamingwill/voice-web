@@ -8,7 +8,7 @@ interface AudioServiceOptions {
 
 const DEFAULT_OPTIONS: Required<AudioServiceOptions> = {
   targetSampleRate: 16000,
-  frameDurationMs: 20,
+  frameDurationMs: 750,
 }
 
 class AudioService {
