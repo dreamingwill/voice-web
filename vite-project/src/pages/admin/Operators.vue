@@ -12,6 +12,19 @@
       </el-button>
     </header>
 
+    <div class="flex flex-wrap items-center gap-3">
+      <el-input
+        v-model="filters.keyword"
+        placeholder="按用户名模糊搜索"
+        clearable
+        class="w-60"
+        @keyup.enter="applySearch"
+        @clear="handleSearchReset"
+      />
+      <el-button type="primary" @click="applySearch">查询</el-button>
+      <el-button @click="handleSearchReset">重置</el-button>
+    </div>
+
     <el-table v-loading="loading" :data="operators" border stripe>
       <el-table-column type="index" width="60" label="#" />
       <el-table-column prop="username" label="用户名" width="160" />
@@ -54,6 +67,20 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <span class="text-sm text-slate-500">共 {{ pagination.total }} 条记录</span>
+      <el-pagination
+        background
+        layout="prev, pager, next, sizes"
+        :total="pagination.total"
+        :current-page="pagination.page"
+        :page-size="pagination.pageSize"
+        :page-sizes="[10, 20, 50]"
+        @current-change="handlePageChange"
+        @size-change="handlePageSizeChange"
+      />
+    </div>
 
     <el-dialog
       v-model="isFormVisible"
@@ -108,6 +135,13 @@ interface Operator {
   has_voiceprint: boolean
 }
 
+interface OperatorListResponse {
+  items: Operator[]
+  total: number
+  page: number
+  page_size: number
+}
+
 const operators = ref<Operator[]>([])
 const isFormVisible = ref(false)
 const formSubmitting = ref(false)
@@ -119,6 +153,14 @@ const form = reactive<{ id: number | null; username: string; identity: string }>
 const operatorFormRef = ref<FormInstance>()
 const voiceTarget = ref<Operator | null>(null)
 const isVoiceModalVisible = ref(false)
+const pagination = reactive({
+  page: 1,
+  pageSize: 20,
+  total: 0,
+})
+const filters = reactive({
+  keyword: '',
+})
 
 const formRules: FormRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -134,8 +176,16 @@ onMounted(() => {
 async function fetchOperators() {
   loading.value = true
   try {
-    const response = await api.get<Operator[]>('/api/users')
-    operators.value = response.data ?? []
+    const response = await api.get<OperatorListResponse>('/api/users', {
+      params: {
+        page: pagination.page,
+        page_size: pagination.pageSize,
+        keyword: filters.keyword || undefined,
+      },
+    })
+    operators.value = response.data?.items ?? []
+    pagination.total = response.data?.total ?? 0
+    pagination.pageSize = response.data?.page_size ?? pagination.pageSize
   } catch (error) {
     console.error('[Operators] fetch failed', error)
     ElMessage.error('加载操作员列表失败')
@@ -185,6 +235,7 @@ async function submitForm() {
           identity: form.identity,
         })
         ElMessage.success('已新增操作员')
+        pagination.page = 1
       }
       isFormVisible.value = false
       await fetchOperators()
@@ -223,5 +274,27 @@ function closeVoiceModal() {
 
 async function handleVoiceCompleted() {
   await fetchOperators()
+}
+
+function handlePageChange(page: number) {
+  pagination.page = page
+  void fetchOperators()
+}
+
+function handlePageSizeChange(size: number) {
+  pagination.pageSize = size
+  pagination.page = 1
+  void fetchOperators()
+}
+
+function applySearch() {
+  pagination.page = 1
+  void fetchOperators()
+}
+
+function handleSearchReset() {
+  filters.keyword = ''
+  pagination.page = 1
+  void fetchOperators()
 }
 </script>
