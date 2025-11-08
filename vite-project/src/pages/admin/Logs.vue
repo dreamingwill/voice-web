@@ -219,6 +219,7 @@ function formatCategoryLabel(category?: string | null) {
     voiceprint_aggregate: '声纹聚合',
     final: '最终语音',
     audio_start: '音频开始',
+    status_change: '切换状态',
   }
   return (category && map[category]) || category || '-'
 }
@@ -234,20 +235,20 @@ function getSummary(log: LogEntry) {
   if (log.type === 'operator_change') {
     switch (log.category) {
       case 'create':
-        return `创建操作员 ${log.username ?? ''}`.trim()
+        return `创建 ${log.username ?? ''}`.trim()
       case 'update': {
         const changes = log.payload && (log.payload as Record<string, unknown>).changes
         if (changes && typeof changes === 'object') {
           const parts = Object.entries(changes as Record<string, { from?: unknown; to?: unknown }>)
             .map(([field, change]) => `${field}: ${change.from ?? '-'} → ${change.to ?? '-'}`)
           if (parts.length) {
-            return `更新 ${log.username ?? ''}（${parts.join('，')}）`
+            return `更新 ${log.username ?? ''}`
           }
         }
-        return `更新操作员 ${log.username ?? ''}`
+        return `更新 ${log.username ?? ''}`
       }
       case 'delete':
-        return `删除操作员 ${log.username ?? ''}`
+        return `删除 ${log.username ?? ''}`
       case 'voiceprint_aggregate':
         return `为 ${log.username ?? ''} 聚合声纹`
       default:

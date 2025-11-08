@@ -18,7 +18,7 @@
         placeholder="按用户名模糊搜索"
         clearable
         class="w-60"
-        @keyup.enter.native="applySearch"
+        @keyup.enter="applySearch"
         @clear="handleSearchReset"
       />
       <el-button type="primary" @click="applySearch">查询</el-button>

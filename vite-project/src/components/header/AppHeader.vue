@@ -37,9 +37,9 @@
             退出登录
           </el-button>
         </template>
-        <template v-else>
+        <!-- <template v-else>
           <el-button size="small" @click="goLogin">登录</el-button>
-        </template>
+        </template> -->
       </div>
     </div>
   </header>

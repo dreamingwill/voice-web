@@ -2,7 +2,7 @@
   <section class="max-w-sm mx-auto bg-white rounded-lg shadow p-6 space-y-5">
     <header class="text-center space-y-1">
       <h2 class="text-xl font-semibold">系统登录</h2>
-      <p class="text-sm text-slate-500">使用模拟账号进入语音控制台。</p>
+      <p class="text-sm text-slate-500">使用admin账号进入语音控制台。</p>
     </header>
     <el-form :model="form" label-position="top" @submit.prevent="attemptLogin">
       <el-form-item label="用户名">
@@ -52,10 +52,15 @@ async function attemptLogin() {
   submitting.value = false
 
   if (success) {
-    ElMessage.success('登录成功，正在跳转至控制台。')
+    ElMessage({
+      message: '登录成功，正在跳转至控制台。',
+      type: 'success',
+      showClose: true,
+      duration: 2500,
+    })
     router.push({ name: 'home' })
   } else {
-    ElMessage.error('账号或密码错误，请重试（admin / voice123）')
+    ElMessage.error('账号或密码错误，请重试')
   }
 }
 </script>
