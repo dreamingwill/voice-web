@@ -134,7 +134,7 @@ onMounted(() => {
 async function fetchOperators() {
   loading.value = true
   try {
-    const response = await api.get<Operator[]>('/users')
+    const response = await api.get<Operator[]>('/api/users')
     operators.value = response.data ?? []
   } catch (error) {
     console.error('[Operators] fetch failed', error)
@@ -174,13 +174,13 @@ async function submitForm() {
     formSubmitting.value = true
     try {
       if (isEditing.value && form.id) {
-        await api.patch(`/users/${form.id}`, {
+        await api.patch(`/api/users/${form.id}`, {
           username: form.username,
           identity: form.identity,
         })
         ElMessage.success('操作员信息已更新')
       } else {
-        await api.post('/users', {
+        await api.post('/api/users', {
           username: form.username,
           identity: form.identity,
         })
@@ -204,7 +204,7 @@ function confirmDelete(row: Operator) {
     cancelButtonText: '取消',
   })
     .then(async () => {
-      await api.delete(`/users/${row.id}`)
+      await api.delete(`/api/users/${row.id}`)
       ElMessage.success('已删除操作员')
       await fetchOperators()
     })

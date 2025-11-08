@@ -3,21 +3,19 @@
     <header class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h2 class="text-lg font-semibold text-primary">事件日志</h2>
-        <p class="text-sm text-slate-600">查看模拟的转写、说话人和授权记录，并可导出 CSV。</p>
+        <p class="text-sm text-slate-600">查看操作员变更与语音事件，支持筛选与导出 CSV。</p>
       </div>
       <el-button type="primary" plain size="small" :loading="exporting" @click="exportLogs">
         导出 CSV
       </el-button>
     </header>
 
+    <el-tabs v-model="activeType" class="-mb-2">
+      <el-tab-pane label="操作事件" name="operator_change" />
+      <el-tab-pane label="语音事件" name="transcript" />
+    </el-tabs>
+
     <el-form :inline="true" :model="filters" label-position="left" size="small" class="flex flex-wrap gap-3">
-      <el-form-item label="事件类型">
-        <el-select v-model="filters.type" placeholder="全部" clearable>
-          <el-option label="全部" value="" />
-          <el-option label="指令" value="command" />
-          <el-option label="报告" value="report" />
-        </el-select>
-      </el-form-item>
       <el-form-item label="授权状态">
         <el-select v-model="filters.authorized" placeholder="全部" clearable>
           <el-option label="全部" value="" />
@@ -40,37 +38,95 @@
       </el-table-column>
       <el-table-column label="类型" width="120">
         <template #default="{ row }">
-          <el-tag :type="row.type === 'command' ? 'warning' : 'info'" size="small">
-            {{ row.type === 'command' ? '指令' : '报告' }}
+          <el-tag :type="getTypeTag(row.type)" size="small">
+            {{ formatTypeLabel(row.type) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="operator" label="人员" width="180" />
-      <el-table-column prop="summary" label="摘要" />
+      <el-table-column label="类别" width="140">
+        <template #default="{ row }">
+          {{ formatCategoryLabel(row.category) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="operator" label="操作者" width="160">
+        <template #default="{ row }">
+          {{ row.operator || '未知' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="关联对象" width="200">
+        <template #default="{ row }">
+          {{ getTargetLabel(row) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="摘要">
+        <template #default="{ row }">
+          {{ getSummary(row) }}
+        </template>
+      </el-table-column>
       <el-table-column label="是否授权" width="140">
         <template #default="{ row }">
-          <el-tag :type="row.authorized ? 'success' : 'danger'" size="small">
-            {{ row.authorized ? '是' : '否' }}
-          </el-tag>
+          <el-tag v-if="row.authorized === true" type="success" size="small">是</el-tag>
+          <el-tag v-else-if="row.authorized === false" type="danger" size="small">否</el-tag>
+          <span v-else class="text-slate-400 text-xs">未知</span>
         </template>
       </el-table-column>
     </el-table>
+
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <span class="text-sm text-slate-500">共 {{ pagination.total }} 条记录</span>
+      <el-pagination
+        background
+        layout="prev, pager, next, sizes"
+        :total="pagination.total"
+        :page-size="pagination.pageSize"
+        :current-page="pagination.page"
+        :page-sizes="[20, 50, 100]"
+        @size-change="handlePageSizeChange"
+        @current-change="handlePageChange"
+      />
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '@/services/apiService'
-import type { LogEntry } from '@/mocks/http'
+
+interface LogEntry {
+  id: number
+  timestamp: string
+  type: string
+  category?: string | null
+  session_id?: string | null
+  operator?: string | null
+  authorized?: boolean | null
+  payload?: Record<string, unknown> | null
+  username?: string | null
+  user_id?: number | null
+  redacted?: boolean | null
+}
+
+interface LogsResponse {
+  items: LogEntry[]
+  total: number
+  page: number
+  page_size: number
+}
 
 const loading = ref(false)
 const exporting = ref(false)
 const logs = ref<LogEntry[]>([])
+const activeType = ref<'operator_change' | 'transcript'>('operator_change')
 
 const filters = reactive({
-  type: '' as '' | 'command' | 'report',
   authorized: '' as '' | 'true' | 'false',
+})
+
+const pagination = reactive({
+  page: 1,
+  pageSize: 20,
+  total: 0,
 })
 
 onMounted(() => {
@@ -80,8 +136,18 @@ onMounted(() => {
 async function fetchLogs() {
   loading.value = true
   try {
-    const response = await api.get<LogEntry[]>('/api/logs')
-    logs.value = response.data ?? []
+    const params: Record<string, unknown> = {
+      page: pagination.page,
+      page_size: pagination.pageSize,
+      type: activeType.value,
+    }
+    if (filters.authorized) {
+      params.authorized = filters.authorized === 'true'
+    }
+    const response = await api.get<LogsResponse>('/api/logs', { params })
+    logs.value = response.data?.items ?? []
+    pagination.total = response.data?.total ?? 0
+    pagination.pageSize = response.data?.page_size ?? pagination.pageSize
   } catch (error) {
     console.error('[Logs] fetch failed', error)
     ElMessage.error('加载日志失败')
@@ -90,23 +156,23 @@ async function fetchLogs() {
   }
 }
 
-const displayedLogs = computed(() =>
-  logs.value.filter((log) => {
-    const matchesType = !filters.type || log.type === filters.type
-    const matchesAuth =
-      !filters.authorized ||
-      (filters.authorized === 'true' ? log.authorized : !log.authorized)
-    return matchesType && matchesAuth
-  }),
-)
+watch(activeType, () => {
+  pagination.page = 1
+  void fetchLogs()
+})
+
+const displayedLogs = computed(() => logs.value)
 
 function applyFilters() {
+  pagination.page = 1
+  void fetchLogs()
   ElMessage.success('筛选条件已应用')
 }
 
 function resetFilters() {
-  filters.type = ''
   filters.authorized = ''
+  pagination.page = 1
+  void fetchLogs()
 }
 
 function formatTimestamp(value: string) {
@@ -131,13 +197,15 @@ function exportLogs() {
   }
   exporting.value = true
   try {
-    const header = ['时间', '类型', '人员', '摘要', '授权']
+    const header = ['时间', '类型', '类别', '操作者', '关联对象', '摘要', '授权']
     const rows = displayedLogs.value.map((log) => [
       formatTimestamp(log.timestamp),
-      log.type === 'command' ? '指令' : '报告',
-      log.operator,
-      log.summary,
-      log.authorized ? '是' : '否',
+      formatTypeLabel(log.type),
+      formatCategoryLabel(log.category),
+      log.operator ?? '',
+      getTargetLabel(log),
+      getSummary(log),
+      log.authorized === true ? '是' : log.authorized === false ? '否' : '未知',
     ])
     const csvContent = [header, ...rows].map((row) => toCsvRow(row)).join('\n')
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -157,5 +225,80 @@ function exportLogs() {
   } finally {
     exporting.value = false
   }
+}
+
+function formatTypeLabel(type: string) {
+  if (type === 'operator_change') return '操作事件'
+  if (type === 'transcript') return '语音事件'
+  return type
+}
+
+function getTypeTag(type: string) {
+  if (type === 'operator_change') return 'primary'
+  if (type === 'transcript') return 'success'
+  return 'info'
+}
+
+function formatCategoryLabel(category?: string | null) {
+  const map: Record<string, string> = {
+    create: '创建',
+    update: '更新',
+    delete: '删除',
+    voiceprint_aggregate: '声纹聚合',
+    final: '最终语音',
+    audio_start: '音频开始',
+  }
+  return (category && map[category]) || category || '-'
+}
+
+function getTargetLabel(log: LogEntry) {
+  if (log.type === 'operator_change') {
+    return log.username ?? `ID ${log.user_id ?? '-'}`
+  }
+  return log.session_id ? `会话 ${log.session_id}` : '会话未知'
+}
+
+function getSummary(log: LogEntry) {
+  if (log.type === 'operator_change') {
+    switch (log.category) {
+      case 'create':
+        return `创建操作员 ${log.username ?? ''}`.trim()
+      case 'update': {
+        const changes = log.payload && (log.payload as Record<string, unknown>).changes
+        if (changes && typeof changes === 'object') {
+          const parts = Object.entries(changes as Record<string, { from?: unknown; to?: unknown }>)
+            .map(([field, change]) => `${field}: ${change.from ?? '-'} → ${change.to ?? '-'}`)
+          if (parts.length) {
+            return `更新 ${log.username ?? ''}（${parts.join('，')}）`
+          }
+        }
+        return `更新操作员 ${log.username ?? ''}`
+      }
+      case 'delete':
+        return `删除操作员 ${log.username ?? ''}`
+      case 'voiceprint_aggregate':
+        return `为 ${log.username ?? ''} 聚合声纹`
+      default:
+        return `操作 ${log.username ?? ''}`
+    }
+  }
+  if (log.type === 'transcript') {
+    const speaker = log.operator || log.username || '未知人员'
+    const payload = (log.payload ?? {}) as Record<string, unknown>
+    const similarity = typeof payload.similarity === 'number' ? `，相似度 ${Math.round(payload.similarity * 100) / 100}` : ''
+    return `${speaker} 的语音内容已隐藏${similarity}`
+  }
+  return '事件详情'
+}
+
+function handlePageChange(page: number) {
+  pagination.page = page
+  void fetchLogs()
+}
+
+function handlePageSizeChange(size: number) {
+  pagination.pageSize = size
+  pagination.page = 1
+  void fetchLogs()
 }
 </script>
