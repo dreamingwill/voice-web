@@ -14,7 +14,15 @@
 
     <section class="space-y-4">
       <p class="text-sm text-slate-600 leading-relaxed">
-        请录制三段 3 秒左右的语音样本，保持环境安静。录制成功后将自动转换为 16kHz PCM WAV 文件并上传至声纹库。
+        请录制三段 3 秒左右的语音样本，保持环境安静。录制成功后将自动转换为音频文件并上传至声纹库。
+        <div class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded p-3 space-y-1">
+          <p class="font-medium text-slate-700">可参考以下示例句式：</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>“你好，我的名字是某某。”</li>
+            <li>“今天的天气真不错，适合外出散步。”</li>
+            <li>“请给我播放一首轻松的音乐。”</li>
+          </ul>
+        </div>
       </p>
 
       <el-alert
@@ -28,11 +36,22 @@
       <div class="flex items-center gap-3">
         <el-button
           type="primary"
-          :loading="isRecording || isProcessing"
-          :disabled="isProcessing || completedSamples.length >= TOTAL_SAMPLES"
+          :loading="isProcessing"
+          :disabled="
+            isProcessing ||
+            completedSamples.length >= TOTAL_SAMPLES ||
+            countdownSeconds > 0 ||
+            isRecording
+          "
           @click="startRecording"
         >
-          {{ isRecording ? '录制中…' : '录制样本' }}
+          {{
+            countdownSeconds > 0
+              ? `准备录制（${countdownSeconds}）`
+              : isRecording
+                ? '录制中…'
+                : '录制样本'
+          }}
         </el-button>
         <el-button
           :disabled="!isRecording"
@@ -43,6 +62,23 @@
         <span class="text-sm text-slate-500">
           样本进度：{{ completedSamples.length }} / {{ TOTAL_SAMPLES }}
         </span>
+      </div>
+      <div class="text-sm text-slate-500 min-h-[24px]">
+        <template v-if="countdownSeconds > 0">
+          即将在 {{ countdownSeconds }} 秒后开始录制，请做好准备…
+        </template>
+        <template v-else-if="isRecording">
+          <div class="flex items-center gap-3">
+            <span>录制中，剩余 {{ recordingTimeLeft.toFixed(1) }} 秒</span>
+            <el-progress
+              class="w-40"
+              :percentage="recordingProgress"
+              :stroke-width="6"
+              :show-text="false"
+              status="success"
+            />
+          </div>
+        </template>
       </div>
 
       <div class="space-y-3">
@@ -130,6 +166,9 @@ const emit = defineEmits<{
 }>()
 
 const TOTAL_SAMPLES = 3
+const COUNTDOWN_SECONDS = 3
+const RECORDING_TARGET_MS = 3_000
+const RECORDING_AUTO_STOP_MS = 3_200
 
 const audioStream = ref<MediaStream | null>(null)
 const mediaRecorder = ref<MediaRecorder | null>(null)
@@ -139,6 +178,14 @@ const isUploading = ref(false)
 const errorMessage = ref<string | null>(null)
 const completedSamples = ref<RecordedSample[]>([])
 const recordedChunks = ref<Blob[]>([])
+const countdownSeconds = ref(0)
+const recordingProgress = ref(0)
+const recordingTimeLeft = ref(0)
+
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+let recordingTimer: ReturnType<typeof setInterval> | null = null
+let autoStopTimer: ReturnType<typeof setTimeout> | null = null
+let recordingStartTime = 0
 
 watch(
   () => props.visible,
@@ -164,6 +211,28 @@ function clearSamples() {
   completedSamples.value = []
 }
 
+function clearCountdownTimer() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+  countdownSeconds.value = 0
+}
+
+function clearRecordingTimers() {
+  if (recordingTimer) {
+    clearInterval(recordingTimer)
+    recordingTimer = null
+  }
+  if (autoStopTimer) {
+    clearTimeout(autoStopTimer)
+    autoStopTimer = null
+  }
+  recordingProgress.value = 0
+  recordingTimeLeft.value = 0
+  recordingStartTime = 0
+}
+
 async function ensureStream() {
   if (audioStream.value) return
   try {
@@ -180,9 +249,37 @@ async function ensureStream() {
   }
 }
 
-function startRecording() {
+async function startRecording() {
+  if (
+    isRecording.value ||
+    countdownSeconds.value > 0 ||
+    isProcessing.value ||
+    completedSamples.value.length >= TOTAL_SAMPLES
+  ) {
+    return
+  }
+
   if (!audioStream.value) {
-    void ensureStream()
+    await ensureStream()
+  }
+
+  if (!audioStream.value) {
+    return
+  }
+
+  clearCountdownTimer()
+  countdownSeconds.value = COUNTDOWN_SECONDS
+  countdownTimer = window.setInterval(() => {
+    countdownSeconds.value -= 1
+    if (countdownSeconds.value <= 0) {
+      clearCountdownTimer()
+      beginRecording()
+    }
+  }, 1_000)
+}
+
+function beginRecording() {
+  if (!audioStream.value) {
     return
   }
 
@@ -215,15 +312,30 @@ function startRecording() {
   mediaRecorder.value.start()
   isRecording.value = true
   errorMessage.value = null
+  recordingProgress.value = 0
+  recordingTimeLeft.value = RECORDING_TARGET_MS / 1_000
+  recordingStartTime = performance.now()
+  recordingTimer = window.setInterval(() => {
+    const elapsed = performance.now() - recordingStartTime
+    recordingProgress.value = Math.min(100, (elapsed / RECORDING_TARGET_MS) * 100)
+    recordingTimeLeft.value = Math.max(0, (RECORDING_TARGET_MS - elapsed) / 1_000)
+    if (elapsed >= RECORDING_TARGET_MS && recordingTimer) {
+      clearInterval(recordingTimer)
+      recordingTimer = null
+      recordingProgress.value = 100
+    }
+  }, 100)
 
-  setTimeout(() => {
+  autoStopTimer = window.setTimeout(() => {
     if (isRecording.value) {
       stopRecording()
     }
-  }, 3200)
+  }, RECORDING_AUTO_STOP_MS)
 }
 
 function stopRecording() {
+  clearCountdownTimer()
+  clearRecordingTimers()
   if (mediaRecorder.value && isRecording.value) {
     mediaRecorder.value.stop()
   }
@@ -232,6 +344,7 @@ function stopRecording() {
 
 async function handleRecordingStop() {
   isRecording.value = false
+  clearRecordingTimers()
   if (!recordedChunks.value.length) return
 
   isProcessing.value = true
@@ -265,6 +378,8 @@ async function handleRecordingStop() {
 }
 
 function cleanupRecorder() {
+  clearCountdownTimer()
+  clearRecordingTimers()
   if (mediaRecorder.value) {
     if (mediaRecorder.value.state !== 'inactive') {
       mediaRecorder.value.stop()
