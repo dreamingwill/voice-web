@@ -60,7 +60,10 @@ async function attemptLogin() {
     })
     router.push({ name: 'home' })
   } else {
-    ElMessage.error('账号或密码错误，请重试')
+    ElMessage.error({
+      message: '账号或密码错误，请重试',
+      showClose: true,
+    })
   }
 }
 </script>

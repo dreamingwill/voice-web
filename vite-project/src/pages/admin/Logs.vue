@@ -136,7 +136,11 @@ async function fetchLogs() {
     pagination.pageSize = response.data?.page_size ?? pagination.pageSize
   } catch (error) {
     console.error('[Logs] fetch failed', error)
-    ElMessage.error('加载日志失败')
+    ElMessage({
+      type: 'error',
+      message: isUnauthorizedError(error) ? '登录状态失效，请重新登录' : '加载日志失败',
+      showClose: true,
+    })
   } finally {
     loading.value = false
   }
@@ -152,7 +156,11 @@ const displayedLogs = computed(() => logs.value)
 function applyFilters() {
   pagination.page = 1
   void fetchLogs()
-  ElMessage.success('筛选条件已应用')
+  ElMessage({
+    type: 'success',
+    message: '筛选条件已应用',
+    showClose: true,
+  })
 }
 
 function resetFilters() {
@@ -178,7 +186,11 @@ function toCsvRow(row: string[]): string {
 
 function exportLogs() {
   if (!displayedLogs.value.length) {
-    ElMessage.warning('当前无数据可导出')
+    ElMessage({
+      type: 'warning',
+      message: '当前无数据可导出',
+      showClose: true,
+    })
     return
   }
   exporting.value = true
@@ -202,10 +214,18 @@ function exportLogs() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    ElMessage.success('日志已导出')
+    ElMessage({
+      type: 'success',
+      message: '日志已导出',
+      showClose: true,
+    })
   } catch (error) {
     console.error('[Logs] export failed', error)
-    ElMessage.error('导出失败')
+    ElMessage({
+      type: 'error',
+      message: '导出失败',
+      showClose: true,
+    })
   } finally {
     exporting.value = false
   }
@@ -217,7 +237,7 @@ function formatCategoryLabel(category?: string | null) {
     update: '更新',
     delete: '删除',
     voiceprint_aggregate: '声纹聚合',
-    final: '最终语音',
+    final: '语音',
     audio_start: '音频开始',
     status_change: '切换状态',
   }
@@ -273,5 +293,9 @@ function handlePageSizeChange(size: number) {
   pagination.pageSize = size
   pagination.page = 1
   void fetchLogs()
+}
+
+function isUnauthorizedError(error: unknown) {
+  return Boolean((error as { response?: { status?: number } })?.response?.status === 401)
 }
 </script>

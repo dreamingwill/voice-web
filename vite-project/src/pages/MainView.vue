@@ -212,7 +212,11 @@ async function toggleRecording() {
     stopRealtimeStreaming(false)
     connectionStore.reset()
     speakerStore.reset()
-    ElMessage.success('已停止音频采集')
+    ElMessage({
+      type: 'success',
+      message: '已停止音频采集',
+      showClose: true,
+    })
   } else {
     connectionStore.setStatus('connecting')
     startRealtimeStreaming()
@@ -221,9 +225,17 @@ async function toggleRecording() {
       stopRealtimeStreaming(false)
       connectionStore.reset()
       speakerStore.reset()
-      ElMessage.error(audioStore.error ?? '启动麦克风失败')
+      ElMessage({
+        type: 'error',
+        message: audioStore.error ?? '启动麦克风失败',
+        showClose: true,
+      })
     } else {
-      ElMessage.success('音频采集已开始')
+      ElMessage({
+        type: 'success',
+        message: '音频采集已开始',
+        showClose: true,
+      })
     }
   }
   isAudioLoading.value = false
@@ -231,6 +243,10 @@ async function toggleRecording() {
 
 async function toggleMute() {
   await audioStore.toggleMute()
-  ElMessage.info(audioStore.isMuted ? '已静音麦克风' : '已恢复麦克风')
+  ElMessage({
+    type: 'info',
+    message: audioStore.isMuted ? '已静音麦克风' : '已恢复麦克风',
+    showClose: true,
+  })
 }
 </script>

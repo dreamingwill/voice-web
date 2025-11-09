@@ -251,7 +251,11 @@ async function handleRecordingStop() {
     completedSamples.value.push(sample)
     await nextTick()
     drawWaveforms()
-    ElMessage.success(`样本 ${sample.index + 1} 录制完成`)
+    ElMessage({
+      type: 'success',
+      message: `样本 ${sample.index + 1} 录制完成`,
+      showClose: true,
+    })
   } catch (error) {
     console.error('[RecordVoiceModal] process error', error)
     errorMessage.value = '处理录音时出现问题，请重试。'
@@ -400,7 +404,11 @@ async function submitSamples() {
     await api.post(`/api/users/${props.operator.id}/voiceprint/aggregate`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
-    ElMessage.success('声纹登记成功')
+    ElMessage({
+      type: 'success',
+      message: '声纹登记成功',
+      showClose: true,
+    })
     emit('completed')
     handleClose()
   } catch (error) {

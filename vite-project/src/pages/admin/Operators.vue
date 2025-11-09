@@ -222,7 +222,11 @@ async function fetchOperators() {
     pagination.pageSize = response.data?.page_size ?? pagination.pageSize
   } catch (error) {
     console.error('[Operators] fetch failed', error)
-    ElMessage.error('加载操作员列表失败')
+    ElMessage({
+      type: 'error',
+      message: isUnauthorizedError(error) ? '登录状态失效，请重新登录' : '加载操作员列表失败',
+      showClose: true,
+    })
   } finally {
     loading.value = false
   }
@@ -268,7 +272,11 @@ async function submitForm() {
           identity: form.identity,
           phone: form.phone || null,
         })
-        ElMessage.success('操作员信息已更新')
+        ElMessage({
+          type: 'success',
+          message: '操作员信息已更新',
+          showClose: true,
+        })
       } else {
         await api.post('/api/users', {
           account: form.account,
@@ -276,14 +284,22 @@ async function submitForm() {
           identity: form.identity,
           phone: form.phone || null,
         })
-        ElMessage.success('已新增操作员')
+        ElMessage({
+          type: 'success',
+          message: '已新增操作员',
+          showClose: true,
+        })
         pagination.page = 1
       }
       isFormVisible.value = false
       await fetchOperators()
     } catch (error) {
       console.error('[Operators] submit failed', error)
-      ElMessage.error('保存失败，请稍后再试')
+      ElMessage({
+        type: 'error',
+        message: '保存失败，请稍后再试',
+        showClose: true,
+      })
     } finally {
       formSubmitting.value = false
     }
@@ -298,7 +314,11 @@ function confirmDelete(row: Operator) {
   })
     .then(async () => {
       await api.delete(`/api/users/${row.id}`)
-      ElMessage.success('已删除操作员')
+      ElMessage({
+        type: 'success',
+        message: '已删除操作员',
+        showClose: true,
+      })
       await fetchOperators()
     })
     .catch(() => undefined)
@@ -344,12 +364,24 @@ async function toggleStatus(row: Operator) {
   const targetStatus = row.status === 'enabled' ? 'disabled' : 'enabled'
   try {
     await api.post(`/api/users/${row.id}/status`, { status: targetStatus })
-    ElMessage.success(targetStatus === 'enabled' ? '已启用该操作员' : '已禁用该操作员')
+    ElMessage({
+      type: 'success',
+      message: targetStatus === 'enabled' ? '已启用该操作员' : '已禁用该操作员',
+      showClose: true,
+    })
     await fetchOperators()
   } catch (error) {
     console.error('[Operators] toggle status failed', error)
-    ElMessage.error('更新状态失败')
+    ElMessage({
+      type: 'error',
+      message: '更新状态失败',
+      showClose: true,
+    })
   }
+}
+
+function isUnauthorizedError(error: unknown) {
+  return Boolean((error as { response?: { status?: number } })?.response?.status === 401)
 }
 </script>
 
