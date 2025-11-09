@@ -276,7 +276,7 @@ function getSummary(log: LogEntry) {
     }
   }
   if (log.type === 'transcript') {
-    const speaker = log.operator || log.username || '未知人员'
+    // const speaker = log.operator || log.username || '未知人员'
     const payload = (log.payload ?? {}) as Record<string, unknown>
     const similarity = typeof payload.similarity === 'number' ? `最高声纹相似度 ${Math.round(payload.similarity * 100) / 100}` : ''
     return ` ${similarity}`

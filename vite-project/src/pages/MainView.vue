@@ -103,37 +103,18 @@ const audioStore = useAudioStore()
 const transcripts = computed(() => asrStore.transcripts)
 const orderedTranscripts = computed(() => [...transcripts.value].reverse())
 const events = computed(() => eventsStore.events)
-const connectionLabel = computed(() => {
-  switch (connectionStore.status) {
-    case 'connected':
-      return '已连接'
-    case 'connecting':
-      return '连接中'
-    default:
-      return '未连接'
-  }
-})
 
-const connectionTag = computed(() => {
-  switch (connectionStore.status) {
-    case 'connected':
-      return 'success'
-    case 'connecting':
-      return 'warning'
-    default:
-      return 'danger'
-  }
-})
 
-const speakerName = computed(
-  () => speakerStore.current?.name ?? '等待识别说话人',
-)
-const speakerRole = computed(() => speakerStore.current?.role ?? '—')
-const speakerInitials = computed(() => {
-  const raw = (speakerStore.current?.name ?? '').replace(/\s+/g, '')
-  if (!raw) return '—'
-  return raw.slice(0, 2)
-})
+
+// const speakerName = computed(
+//   () => speakerStore.current?.name ?? '等待识别说话人',
+// )
+// const speakerRole = computed(() => speakerStore.current?.role ?? '—')
+// const speakerInitials = computed(() => {
+//   const raw = (speakerStore.current?.name ?? '').replace(/\s+/g, '')
+//   if (!raw) return '—'
+//   return raw.slice(0, 2)
+// })
 const transcriptContainer = ref<HTMLElement | null>(null)
 const eventsContainer = ref<HTMLElement | null>(null)
 const isAudioLoading = ref(false)
