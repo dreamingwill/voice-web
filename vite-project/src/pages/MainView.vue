@@ -216,6 +216,7 @@ async function toggleRecording() {
     })
   } else {
     connectionStore.setStatus('connecting')
+    asrStore.clear()
     startRealtimeStreaming()
     const ok = await audioStore.start()
     if (!ok) {
