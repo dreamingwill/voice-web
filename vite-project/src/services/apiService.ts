@@ -10,8 +10,11 @@ export function getAuthToken(): string | null {
   return accessToken
 }
 
+const rawBaseURL = import.meta.env.VITE_API_BASE ?? '/api'
+const normalizedBaseURL = rawBaseURL.endsWith('/') ? rawBaseURL : `${rawBaseURL}/`
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE ?? '/api',
+  baseURL: normalizedBaseURL,
   timeout: 10_000,
 })
 
