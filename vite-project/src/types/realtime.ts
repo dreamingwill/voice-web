@@ -25,6 +25,15 @@ export interface FinalTranscriptMessage {
   topk?: Array<SimilarityCandidate | [string, number]>
 }
 
+export interface DoneMessage {
+  type: 'done'
+}
+
+export interface ControlPongMessage {
+  type: 'control.pong'
+  time?: number
+}
+
 export type WsInboundMessage =
   | PartialTranscriptMessage
   | FinalTranscriptMessage
@@ -32,6 +41,8 @@ export type WsInboundMessage =
   | { type: 'event'; data: StructuredEvent }
   | { type: 'meta'; data: Record<string, unknown> }
   | { type: 'error'; error: string; code?: string | number }
+  | DoneMessage
+  | ControlPongMessage
 
 export interface AudioStartPayload {
   sampleRate: number

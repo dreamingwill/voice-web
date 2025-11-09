@@ -9,6 +9,7 @@ import type {
   PartialTranscriptMessage,
   FinalTranscriptMessage,
   SimilarityCandidate,
+  ControlPongMessage,
 } from '@/types/realtime'
 
 interface WSServiceOptions {
@@ -278,6 +279,12 @@ export class WSService {
       case 'error':
         this.handleError(parsed.error ?? '服务器返回错误', parsed)
         break
+      case 'control.pong':
+        this.handleControlPong(parsed)
+        break
+      case 'done':
+        this.handleDone()
+        break
       default:
         console.warn('[wsService] 未知消息类型', parsed)
     }
@@ -285,6 +292,19 @@ export class WSService {
 
   private handleBinary(buffer: ArrayBuffer) {
     console.debug('[wsService] 收到二进制消息，长度', buffer.byteLength)
+  }
+
+  private handleControlPong(message: ControlPongMessage) {
+    console.debug('[wsService] 收到 control.pong', message)
+    if (this.lastPingAt > 0) {
+      const latency = Date.now() - this.lastPingAt
+      this.metaListeners.forEach((listener) => listener({ latency }))
+    }
+  }
+
+  private handleDone() {
+    console.info('[wsService] 收到 done，停止自动重连，等待服务端关闭连接')
+    this.shouldReconnect = false
   }
 
   private startHeartbeat() {
