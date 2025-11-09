@@ -6,9 +6,12 @@ interface AudioServiceOptions {
   frameDurationMs?: number
 }
 
+export const DEFAULT_TARGET_SAMPLE_RATE = 16_000
+export const DEFAULT_FRAME_DURATION_MS = 160
+
 const DEFAULT_OPTIONS: Required<AudioServiceOptions> = {
-  targetSampleRate: 16000,
-  frameDurationMs: 250,
+  targetSampleRate: DEFAULT_TARGET_SAMPLE_RATE,
+  frameDurationMs: DEFAULT_FRAME_DURATION_MS,
 }
 
 class AudioService {
@@ -238,7 +241,7 @@ class AudioService {
   }
 
   private handlePcmFrame(frame: Int16Array, level: number) {
-    console.log('[audioService] PCM frame', frame)
+    // console.log('[audioService] PCM frame', frame)
     this.emitLevel(level)
     this.frameListeners.forEach((listener) => listener(frame))
   }
