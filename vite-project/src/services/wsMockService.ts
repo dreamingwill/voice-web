@@ -85,12 +85,19 @@ const getSpeakerByIndex = (index: number): SpeakerState => speakerRoster[index] 
 
 const getRandom = <T>(items: T[]): T => items[Math.floor(Math.random() * items.length)]!
 
-const createTranscript = (speaker: SpeakerState): TranscriptSegment => ({
-  id: `ts-${Math.random().toString(36).slice(2, 9)}`,
-  text: getRandom(transcriptSamples),
-  timestamp: new Date().toISOString(),
-  speaker: speaker.name,
-})
+let transcriptSequence = 1
+
+const createTranscript = (speaker: SpeakerState): TranscriptSegment => {
+  const segmentId = transcriptSequence++
+  return {
+    id: `ts-${segmentId}`,
+    segmentId,
+    text: getRandom(transcriptSamples),
+    timestamp: new Date().toISOString(),
+    speaker: speaker.name,
+    finalized: Math.random() > 0.4,
+  }
+}
 
 const createCommand = (base: Omit<CommandEvent, 'id' | 'timestamp'>): CommandEvent => ({
   ...base,
@@ -128,7 +135,14 @@ export function startRealtimeMock() {
     activeSpeaker = (activeSpeaker + 1) % speakerRoster.length
     const current = getSpeakerByIndex(activeSpeaker)
     speakerStore.setSpeaker(current)
-    asrStore.addTranscript(createTranscript(current))
+    const transcript = createTranscript(current)
+    asrStore.upsertSegment({
+      segmentId: transcript.segmentId,
+      text: transcript.text,
+      speaker: transcript.speaker,
+      finalized: transcript.finalized,
+      timestamp: transcript.timestamp,
+    })
   }, 3500)
 
   eventTimer = setInterval(() => {

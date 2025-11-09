@@ -19,7 +19,8 @@ function makeSessionId() {
 }
 
 function bufferFromFrame(frame: Int16Array): ArrayBuffer {
-  return frame.buffer.slice(frame.byteOffset, frame.byteOffset + frame.byteLength)
+  // Use slice() to materialize a standalone ArrayBuffer (avoids SharedArrayBuffer type issues)
+  return frame.slice().buffer
 }
 
 export function startRealtimeStreaming() {

@@ -22,7 +22,7 @@ export interface FinalTranscriptMessage {
   start_ms: number
   end_ms: number
   similarity?: number
-  topk?: SimilarityCandidate[]
+  topk?: Array<SimilarityCandidate | [string, number]>
 }
 
 export type WsInboundMessage =

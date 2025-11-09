@@ -65,7 +65,7 @@
         </header>
         <div ref="transcriptContainer" class="max-h-80 overflow-y-auto pr-2 space-y-3">
           <article
-            v-for="segment in transcripts"
+            v-for="segment in orderedTranscripts"
             :key="segment.id"
             class="rounded-md border border-slate-200 px-3 py-2 bg-slate-50 text-left"
           >
@@ -122,6 +122,7 @@ const speakerStore = useSpeakerStore()
 const audioStore = useAudioStore()
 
 const transcripts = computed(() => asrStore.transcripts)
+const orderedTranscripts = computed(() => [...transcripts.value].reverse())
 const events = computed(() => eventsStore.events)
 const connectionLabel = computed(() => {
   switch (connectionStore.status) {
@@ -154,10 +155,6 @@ const speakerInitials = computed(() => {
   if (!raw) return '—'
   return raw.slice(0, 2)
 })
-const latencyText = computed(() =>
-  connectionStore.latencyMs !== null ? `${connectionStore.latencyMs} ms` : '暂不可用',
-)
-
 const transcriptContainer = ref<HTMLElement | null>(null)
 const eventsContainer = ref<HTMLElement | null>(null)
 const isAudioLoading = ref(false)
@@ -183,7 +180,7 @@ watch(
   () => {
     nextTick(() => {
       if (transcriptContainer.value) {
-        transcriptContainer.value.scrollTop = transcriptContainer.value.scrollHeight
+        transcriptContainer.value.scrollTop = 0
       }
     })
   },

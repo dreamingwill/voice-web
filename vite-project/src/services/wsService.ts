@@ -54,7 +54,7 @@ export class WSService {
   private manualClose = false
   private sessionId: string | null = null
   private token: string | null = null
-  private operatorInfo: ConnectOptions['operator'] = null
+  private operatorInfo: ConnectOptions['operator'] = undefined
   private locale: string | null = null
 
   private readonly partialListeners = new Set<Listener<PartialTranscriptMessage>>()
@@ -84,7 +84,7 @@ export class WSService {
 
     this.sessionId = sessionId
     this.token = options?.token ?? null
-    this.operatorInfo = options?.operator ?? null
+    this.operatorInfo = options?.operator
     this.locale = options?.locale ?? null
     this.readyState = 'connecting'
     this.manualClose = false

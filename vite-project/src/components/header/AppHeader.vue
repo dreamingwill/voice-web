@@ -58,10 +58,6 @@ function logout() {
   router.push({ name: 'login' })
 }
 
-function goLogin() {
-  router.push({ name: 'login' })
-}
-
 function linkClass(path: string) {
   return route.path === path ? 'font-semibold underline' : 'text-emerald-100'
 }
