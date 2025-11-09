@@ -54,9 +54,9 @@ const logs: LogEntry[] = [
 const token = 'mock-jwt-token'
 
 api.interceptors.request.use(async (config) => {
-  const { url, method, data, params, headers } = config
+  const { url, method, data, headers } = config
 
-  if (!url?.startsWith('/api')) {
+  if (!url?.startsWith('/')) {
     return config
   }
 
@@ -65,7 +65,7 @@ api.interceptors.request.use(async (config) => {
       let responseData: unknown = null
       let status = 200
 
-      if (url === '/api/login' && method === 'post') {
+      if (url === '/auth/login' && method === 'post') {
         const body = typeof data === 'string' ? JSON.parse(data) : data
         if (body?.username === 'admin' && body?.password === 'voice123') {
           responseData = { token, expiresIn: 3600 }
@@ -73,9 +73,9 @@ api.interceptors.request.use(async (config) => {
           status = 401
           responseData = { message: 'INVALID_CREDENTIALS' }
         }
-      } else if (url === '/api/operators' && method === 'get') {
+      } else if (url === '/users' && method === 'get') {
         responseData = operators
-      } else if (url === '/api/operators' && method === 'post') {
+      } else if (url === '/users' && method === 'post') {
         const body = typeof data === 'string' ? JSON.parse(data) : data
         const newOperator: Operator = {
           id: `op-${Date.now()}`,
@@ -86,7 +86,7 @@ api.interceptors.request.use(async (config) => {
         }
         operators.unshift(newOperator)
         responseData = newOperator
-      } else if (url?.startsWith('/api/operators/') && method === 'put') {
+      } else if (url?.startsWith('/users/') && method === 'patch') {
         const id = url.split('/').pop()
         const body = typeof data === 'string' ? JSON.parse(data) : data
         const index = operators.findIndex((operator) => operator.id === id)
@@ -100,7 +100,7 @@ api.interceptors.request.use(async (config) => {
         } else {
           status = 404
         }
-      } else if (url?.startsWith('/api/operators/') && method === 'delete') {
+      } else if (url?.startsWith('/users/') && method === 'delete') {
         const id = url.split('/').pop()
         const index = operators.findIndex((operator) => operator.id === id)
         if (index >= 0) {
@@ -109,8 +109,8 @@ api.interceptors.request.use(async (config) => {
         } else {
           status = 404
         }
-      } else if (url === '/api/voiceprints/register' && method === 'post') {
-        const operatorId = (params as Record<string, string> | undefined)?.operatorId
+      } else if (url?.endsWith('/voiceprint/aggregate') && method === 'post') {
+        const operatorId = url.split('/').slice(-3, -2)[0]
         const operator = operators.find((item) => item.id === operatorId)
         if (operator) {
           operator.voiceprintId = `VP-${Math.floor(Math.random() * 90000 + 10000)}`
@@ -120,8 +120,18 @@ api.interceptors.request.use(async (config) => {
           status = 404
           responseData = { status: 'error', message: 'operator_not_found' }
         }
-      } else if (url === '/api/logs' && method === 'get') {
+      } else if (url === '/logs' && method === 'get') {
         responseData = logs
+      } else if (url?.endsWith('/status') && method === 'post') {
+        const operatorId = url.split('/').slice(-2, -1)[0]
+        const operator = operators.find((item) => item.id === operatorId)
+        if (operator) {
+          operator.updatedAt = new Date().toISOString()
+          responseData = { ...operator, status: (typeof data === 'string' ? JSON.parse(data) : data)?.status }
+        } else {
+          status = 404
+          responseData = { message: 'operator_not_found' }
+        }
       } else {
         status = 404
         responseData = { message: 'NOT_FOUND' }
