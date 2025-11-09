@@ -27,18 +27,18 @@
 
     <el-table v-loading="loading" :data="operators" border stripe>
       <el-table-column type="index" width="60" label="#" />
-      <el-table-column prop="account" label="账号" width="160" />
+      <!-- <el-table-column prop="account" label="账号" width="160" /> -->
       <el-table-column prop="username" label="姓名" width="140" />
-      <el-table-column label="角色" width="150">
+      <!-- <el-table-column label="角色" width="150">
         <template #default="{ row }">
           {{ row.identity ?? '—' }}
         </template>
-      </el-table-column>
-      <el-table-column prop="phone" label="手机号" width="160">
+      </el-table-column> -->
+      <!-- <el-table-column prop="phone" label="手机号" width="160">
         <template #default="{ row }">
           {{ row.phone ?? '—' }}
         </template>
-      </el-table-column>
+      </el-table-column> -->
       <el-table-column label="状态" width="140">
         <template #default="{ row }">
           <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" size="small">

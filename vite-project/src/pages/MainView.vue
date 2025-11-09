@@ -6,31 +6,7 @@
       @acknowledge="eventsStore.acknowledgeUnauthorized"
     />
 
-    <div
-      class="bg-white rounded-lg shadow px-6 py-4 flex flex-wrap items-center justify-between gap-4"
-    >
-      <div class="flex items-center gap-2">
-        <span class="text-xs tracking-wide text-slate-500">连接状态</span>
-        <el-tag :type="connectionTag" effect="dark" size="small">{{ connectionLabel }}</el-tag>
-      </div>
-      <div class="flex items-center gap-3 text-sm text-slate-700">
-        <span
-          class="inline-flex items-center justify-center bg-primary/10 text-primary rounded-full h-10 w-10 text-base font-semibold"
-        >
-          {{ speakerInitials }}
-        </span>
-        <div>
-          <p class="font-semibold">{{ speakerName }}</p>
-          <p class="text-xs text-slate-500">角色：{{ speakerRole }}</p>
-        </div>
-      </div>
-      <!-- <div class="text-right">
-        <p class="text-xs tracking-wide text-slate-500">网络延迟</p>
-        <p class="text-sm font-semibold text-slate-700">
-          {{ latencyText }}
-        </p>
-      </div> -->
-    </div>
+
 
     <section class="bg-white rounded-lg shadow p-4 space-y-4">
       <header class="flex flex-wrap items-center justify-between gap-3">
@@ -83,8 +59,12 @@
           <el-empty v-if="!transcripts.length" description="暂无转写数据" />
         </div>
       </section>
+    </div>
 
-      <section class="bg-white rounded-lg shadow p-4 flex flex-col gap-4">
+    <section
+      v-if="events.length"
+      class="bg-white rounded-lg shadow p-4 flex flex-col gap-4"
+    >
         <header class="flex items-center justify-between">
           <h2 class="text-lg font-semibold text-primary">结构化事件</h2>
           <el-button size="small" @click="eventsStore.clear">清空</el-button>
@@ -97,7 +77,6 @@
           <el-empty v-if="!events.length" description="暂无事件" />
         </div>
       </section>
-    </div>
   </section>
 </template>
 

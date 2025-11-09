@@ -30,23 +30,23 @@
     </el-form>
 
     <el-table v-loading="loading" :data="displayedLogs" stripe size="small" height="420">
-      <el-table-column type="index" width="60" label="#" />
-      <el-table-column prop="timestamp" label="时间" width="180">
+      <el-table-column type="index" label="#" />
+      <el-table-column prop="timestamp" label="时间" width="165">
         <template #default="{ row }">
           {{ formatTimestamp(row.timestamp) }}
         </template>
       </el-table-column>
-      <el-table-column label="类别" width="140">
+      <el-table-column label="类别">
         <template #default="{ row }">
           {{ formatCategoryLabel(row.category) }}
         </template>
       </el-table-column>
-      <el-table-column prop="operator" label="操作者" width="160">
+      <el-table-column prop="operator" label="操作者">
         <template #default="{ row }">
           {{ row.operator || '未知' }}
         </template>
       </el-table-column>
-      <el-table-column label="关联对象" width="200">
+      <el-table-column label="关联对象">
         <template #default="{ row }">
           {{ getTargetLabel(row) }}
         </template>
@@ -278,8 +278,8 @@ function getSummary(log: LogEntry) {
   if (log.type === 'transcript') {
     const speaker = log.operator || log.username || '未知人员'
     const payload = (log.payload ?? {}) as Record<string, unknown>
-    const similarity = typeof payload.similarity === 'number' ? `，相似度 ${Math.round(payload.similarity * 100) / 100}` : ''
-    return `${speaker} 的语音内容已隐藏${similarity}`
+    const similarity = typeof payload.similarity === 'number' ? `最高声纹相似度 ${Math.round(payload.similarity * 100) / 100}` : ''
+    return ` ${similarity}`
   }
   return '事件详情'
 }
