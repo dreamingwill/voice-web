@@ -210,7 +210,7 @@ onMounted(() => {
 async function fetchOperators() {
   loading.value = true
   try {
-    const response = await api.get<OperatorListResponse>('users', {
+    const response = await api.get<OperatorListResponse>('api/users', {
       params: {
         page: pagination.page,
         page_size: pagination.pageSize,
@@ -266,7 +266,7 @@ async function submitForm() {
     formSubmitting.value = true
     try {
       if (isEditing.value && form.id) {
-        await api.patch(`users/${form.id}`, {
+        await api.patch(`api/users/${form.id}`, {
           account: form.account,
           username: form.username,
           identity: form.identity,
@@ -278,7 +278,7 @@ async function submitForm() {
           showClose: true,
         })
       } else {
-        await api.post('users', {
+        await api.post('api/users', {
           account: form.account,
           username: form.username,
           identity: form.identity,
@@ -313,7 +313,7 @@ function confirmDelete(row: Operator) {
     cancelButtonText: '取消',
   })
     .then(async () => {
-      await api.delete(`users/${row.id}`)
+      await api.delete(`api/users/${row.id}`)
       ElMessage({
         type: 'success',
         message: '已删除操作员',
@@ -363,7 +363,7 @@ function handleSearchReset() {
 async function toggleStatus(row: Operator) {
   const targetStatus = row.status === 'enabled' ? 'disabled' : 'enabled'
   try {
-    await api.post(`users/${row.id}/status`, { status: targetStatus })
+    await api.post(`api/users/${row.id}/status`, { status: targetStatus })
     ElMessage({
       type: 'success',
       message: targetStatus === 'enabled' ? '已启用该操作员' : '已禁用该操作员',

@@ -81,7 +81,7 @@ export const useUserStore = defineStore('user', {
     },
     async login({ username, password }: Credentials): Promise<boolean> {
       try {
-        const response = await api.post('auth/login', { username, password })
+        const response = await api.post('api/auth/login', { username, password })
         const { token, refresh_token: refreshToken, user } = response.data as {
           token: string
           refresh_token: string

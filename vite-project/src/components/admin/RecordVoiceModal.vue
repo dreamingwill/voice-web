@@ -516,7 +516,7 @@ async function submitSamples() {
     completedSamples.value.forEach((sample, index) => {
       formData.append('files', sample.blob, `sample-${index + 1}.wav`)
     })
-    await api.post(`users/${props.operator.id}/voiceprint/aggregate`, formData, {
+    await api.post(`api/users/${props.operator.id}/voiceprint/aggregate`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     ElMessage({

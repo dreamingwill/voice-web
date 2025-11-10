@@ -130,7 +130,7 @@ async function fetchLogs() {
     if (filters.authorized) {
       params.authorized = filters.authorized === 'true'
     }
-    const response = await api.get<LogsResponse>('logs', { params })
+    const response = await api.get<LogsResponse>('api/logs', { params })
     logs.value = response.data?.items ?? []
     pagination.total = response.data?.total ?? 0
     pagination.pageSize = response.data?.page_size ?? pagination.pageSize
