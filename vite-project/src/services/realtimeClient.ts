@@ -8,10 +8,21 @@ let frameUnsubscribe: (() => void) | null = null
 
 function ensureWsInstance() {
   if (!wsInstance) {
-    const url = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000/ws/asr'
+    const url =
+      import.meta.env.VITE_WS_URL && import.meta.env.VITE_WS_URL.trim().length > 0
+        ? import.meta.env.VITE_WS_URL.trim()
+        : buildDefaultWsUrl()
     wsInstance = createWsService(url)
   }
   return wsInstance
+}
+
+function buildDefaultWsUrl() {
+  if (typeof window === 'undefined') {
+    return 'ws://localhost:8000/ws/asr'
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  return `${protocol}://${window.location.host}/ws/asr`
 }
 
 function makeSessionId() {
