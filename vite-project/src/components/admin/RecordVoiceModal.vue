@@ -14,7 +14,7 @@
 
     <section class="space-y-4">
       <p class="text-sm text-slate-600 leading-relaxed">
-        请录制三段 3 秒左右的语音样本，保持环境安静。录制成功后将自动转换为音频文件并上传至声纹库。
+        请准备三段约 3 秒的语音样本，可选择现场录制或上传已存在的音频文件，系统会自动转换并上传至声纹库。
       </p>
       <div class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded p-3 space-y-1">
         <p class="font-medium text-slate-700">可参考以下示例句式：</p>
@@ -24,6 +24,18 @@
           <li>“请给我播放一首轻松的音乐。”</li>
         </ul>
       </div>
+      <el-radio-group
+        v-model="mode"
+        size="small"
+        class="inline-flex bg-slate-50 border border-slate-200 rounded px-2 py-1"
+      >
+        <el-radio-button label="record">
+          现场录制
+        </el-radio-button>
+        <el-radio-button label="upload">
+          上传文件
+        </el-radio-button>
+      </el-radio-group>
 
       <el-alert
         v-if="errorMessage"
@@ -33,52 +45,94 @@
         :description="errorMessage"
       />
 
-      <div class="flex items-center gap-3">
-        <el-button
-          type="primary"
-          :loading="isProcessing"
-          :disabled="
-            isProcessing ||
-            completedSamples.length >= TOTAL_SAMPLES ||
-            countdownSeconds > 0 ||
-            isRecording
-          "
-          @click="startRecording"
-        >
-          {{
-            countdownSeconds > 0
-              ? `准备录制（${countdownSeconds}）`
-              : isRecording
-                ? '录制中…'
-                : '录制样本'
-          }}
-        </el-button>
-        <el-button
-          :disabled="!isRecording"
-          @click="stopRecording"
-        >
-          停止
-        </el-button>
-        <span class="text-sm text-slate-500">
-          样本进度：{{ completedSamples.length }} / {{ TOTAL_SAMPLES }}
-        </span>
+      <div
+        v-if="mode === 'record'"
+        class="space-y-3"
+      >
+        <div class="flex items-center gap-3">
+          <el-button
+            type="primary"
+            :loading="isProcessing"
+            :disabled="
+              isProcessing ||
+              completedSamples.length >= MAX_SAMPLES ||
+              countdownSeconds > 0 ||
+              isRecording
+            "
+            @click="startRecording"
+          >
+            {{
+              countdownSeconds > 0
+                ? `准备录制（${countdownSeconds}）`
+                : isRecording
+                  ? '录制中…'
+                  : '录制样本'
+            }}
+          </el-button>
+          <el-button
+            :disabled="!isRecording"
+            @click="stopRecording"
+          >
+            停止
+          </el-button>
+          <span class="text-sm text-slate-500">
+            样本进度：{{ completedSamples.length }} / {{ MAX_SAMPLES }}
+          </span>
+        </div>
+        <div class="text-sm text-slate-500 min-h-[24px]">
+          <template v-if="countdownSeconds > 0">
+            即将在 {{ countdownSeconds }} 秒后开始录制，请做好准备…
+          </template>
+          <template v-else-if="isRecording">
+            <div class="flex items-center gap-3">
+              <span>录制中，剩余 {{ recordingTimeLeft.toFixed(1) }} 秒</span>
+              <el-progress
+                class="w-40"
+                :percentage="recordingProgress"
+                :stroke-width="6"
+                :show-text="false"
+                status="success"
+              />
+            </div>
+          </template>
+        </div>
       </div>
-      <div class="text-sm text-slate-500 min-h-[24px]">
-        <template v-if="countdownSeconds > 0">
-          即将在 {{ countdownSeconds }} 秒后开始录制，请做好准备…
-        </template>
-        <template v-else-if="isRecording">
-          <div class="flex items-center gap-3">
-            <span>录制中，剩余 {{ recordingTimeLeft.toFixed(1) }} 秒</span>
-            <el-progress
-              class="w-40"
-              :percentage="recordingProgress"
-              :stroke-width="6"
-              :show-text="false"
-              status="success"
-            />
-          </div>
-        </template>
+      <div
+        v-else
+        class="space-y-3"
+      >
+        <div class="text-sm text-slate-600 bg-slate-50 border border-dashed border-slate-300 rounded p-4 space-y-2">
+          <p class="font-medium text-slate-700">上传要求</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>支持 {{ SUPPORTED_FORMAT_LABEL }} 格式，单个文件不超过 10 MB。</li>
+            <li>每段语音建议 2-5 秒，可轻读示例句式以保持内容一致。</li>
+            <li>可上传 1-{{ MAX_SAMPLES }} 段，若需替换请关闭弹窗重新选择。</li>
+          </ul>
+        </div>
+        <div class="flex items-center gap-3">
+          <el-button
+            type="primary"
+            :disabled="isProcessing || completedSamples.length >= MAX_SAMPLES"
+            :loading="isProcessing"
+            @click="openFilePicker"
+          >
+            选择音频文件
+          </el-button>
+          <input
+            ref="uploadInputRef"
+            type="file"
+            accept="audio/*"
+            multiple
+            class="hidden"
+            @change="handleUploadChange"
+          >
+          <span class="text-sm text-slate-500">
+            样本进度：{{ completedSamples.length }} / {{ MAX_SAMPLES }}
+          </span>
+        </div>
+        <p class="text-xs text-slate-500">
+          可一次选择多段音频，系统会依次校验并上传符合要求的样本。
+        </p>
       </div>
 
       <div class="space-y-3">
@@ -126,7 +180,7 @@
           <el-button
             type="primary"
             :loading="isUploading"
-            :disabled="completedSamples.length !== TOTAL_SAMPLES"
+            :disabled="completedSamples.length < MIN_SAMPLES"
             @click="submitSamples"
           >
             上传声纹
@@ -141,6 +195,10 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '@/services/apiService'
+
+type Mode = 'record' | 'upload'
+type SampleSource = 'recording' | 'upload'
+type DurationErrorCode = 'duration-short' | 'duration-long'
 
 interface Props {
   visible: boolean
@@ -157,6 +215,8 @@ interface RecordedSample {
   url: string
   waveform: number[]
   duration: number
+  source: SampleSource
+  filename?: string
 }
 
 const props = defineProps<Props>()
@@ -165,11 +225,29 @@ const emit = defineEmits<{
   (event: 'completed'): void
 }>()
 
-const TOTAL_SAMPLES = 3
+const MIN_SAMPLES = 1
+const MAX_SAMPLES = 3
 const COUNTDOWN_SECONDS = 3
 const RECORDING_TARGET_MS = 3_000
 const RECORDING_AUTO_STOP_MS = 3_200
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+const MIN_SAMPLE_DURATION = 2
+const MAX_SAMPLE_DURATION = 5
+const SUPPORTED_FORMAT_LABEL = 'wav / mp3 / m4a / aac / ogg / webm'
+const ALLOWED_MIME_TYPES = [
+  'audio/wav',
+  'audio/x-wav',
+  'audio/webm',
+  'audio/ogg',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/x-m4a',
+  'audio/aac',
+  'audio/mp4',
+]
+const ALLOWED_EXTENSIONS = ['wav', 'webm', 'ogg', 'mp3', 'm4a', 'aac']
 
+const mode = ref<Mode>('record')
 const audioStream = ref<MediaStream | null>(null)
 const mediaRecorder = ref<MediaRecorder | null>(null)
 const isRecording = ref(false)
@@ -181,6 +259,16 @@ const recordedChunks = ref<Blob[]>([])
 const countdownSeconds = ref(0)
 const recordingProgress = ref(0)
 const recordingTimeLeft = ref(0)
+const uploadInputRef = ref<HTMLInputElement | null>(null)
+class SampleValidationError extends Error {
+  code: DurationErrorCode
+
+  constructor(code: DurationErrorCode, message: string) {
+    super(message)
+    this.name = 'SampleValidationError'
+    this.code = code
+  }
+}
 
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 let recordingTimer: ReturnType<typeof setInterval> | null = null
@@ -189,17 +277,120 @@ let recordingStartTime = 0
 
 watch(
   () => props.visible,
-  async (visible) => {
+  (visible) => {
     if (visible) {
       errorMessage.value = null
-      await ensureStream()
       drawWaveforms()
     } else {
       cleanupRecorder()
       clearSamples()
+      mode.value = 'record'
     }
   },
 )
+
+watch(
+  mode,
+  (currentMode) => {
+    if (currentMode === 'upload') {
+      cleanupRecorder()
+    } else {
+      errorMessage.value = null
+    }
+  },
+)
+
+function openFilePicker() {
+  uploadInputRef.value?.click()
+}
+
+function handleUploadChange(event: Event) {
+  const target = event.target as HTMLInputElement | null
+  if (!target?.files?.length) return
+  void processUploadedFiles(Array.from(target.files))
+  target.value = ''
+}
+
+function isAllowedFile(file: File): boolean {
+  if (file.type && ALLOWED_MIME_TYPES.includes(file.type)) return true
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (!ext) return false
+  return ALLOWED_EXTENSIONS.includes(ext)
+}
+
+async function processUploadedFiles(files: File[]) {
+  if (!files.length) return
+  if (completedSamples.value.length >= MAX_SAMPLES) {
+    ElMessage({
+      type: 'info',
+      message: `已达到最多 ${MAX_SAMPLES} 个样本，如需重新上传请关闭对话框后再次进入。`,
+      showClose: true,
+    })
+    return
+  }
+  errorMessage.value = null
+  isProcessing.value = true
+  let hasSuccessfulUpload = false
+  let lastIssueMessage: string | null = null
+  try {
+    for (const file of files) {
+      if (completedSamples.value.length >= MAX_SAMPLES) break
+      if (!isAllowedFile(file)) {
+        ElMessage({
+          type: 'warning',
+          message: `${file.name} 格式不受支持，仅支持 ${SUPPORTED_FORMAT_LABEL}`,
+          showClose: true,
+        })
+        lastIssueMessage = `请使用 ${SUPPORTED_FORMAT_LABEL} 格式。`
+        continue
+      }
+      if (file.size > MAX_UPLOAD_SIZE) {
+        ElMessage({
+          type: 'warning',
+          message: `${file.name} 超过 10 MB 限制，已跳过`,
+          showClose: true,
+        })
+        lastIssueMessage = '音频文件大小不得超过 10 MB。'
+        continue
+      }
+      try {
+        const sample = await addSampleFromBlob(file, 'upload', file.name)
+        hasSuccessfulUpload = true
+        ElMessage({
+          type: 'success',
+          message: `样本 ${sample.index + 1} 上传完成`,
+          showClose: true,
+        })
+      } catch (error) {
+        console.error('[RecordVoiceModal] process upload file error', error)
+        if (error instanceof SampleValidationError) {
+          const message =
+            error.code === 'duration-short'
+              ? `${file.name} 时长不足 ${MIN_SAMPLE_DURATION} 秒，已跳过`
+              : `${file.name} 时长超过 ${MAX_SAMPLE_DURATION} 秒，已跳过`
+          lastIssueMessage = `音频时长需控制在 ${MIN_SAMPLE_DURATION}-${MAX_SAMPLE_DURATION} 秒内。`
+          ElMessage({
+            type: 'warning',
+            message,
+            showClose: true,
+          })
+        } else {
+          lastIssueMessage = '处理上传文件失败，请确认音频格式后重试。'
+          ElMessage({
+            type: 'error',
+            message: `${file.name} 处理失败，已跳过`,
+            showClose: true,
+          })
+        }
+      }
+    }
+  } finally {
+    isProcessing.value = false
+    if (!hasSuccessfulUpload && lastIssueMessage) {
+      errorMessage.value = lastIssueMessage
+    }
+  }
+}
 
 onBeforeUnmount(() => {
   cleanupRecorder()
@@ -209,6 +400,13 @@ onBeforeUnmount(() => {
 function clearSamples() {
   completedSamples.value.forEach((sample) => URL.revokeObjectURL(sample.url))
   completedSamples.value = []
+  resetUploadInput()
+}
+
+function resetUploadInput() {
+  if (uploadInputRef.value) {
+    uploadInputRef.value.value = ''
+  }
 }
 
 function clearCountdownTimer() {
@@ -254,7 +452,7 @@ async function startRecording() {
     isRecording.value ||
     countdownSeconds.value > 0 ||
     isProcessing.value ||
-    completedSamples.value.length >= TOTAL_SAMPLES
+    completedSamples.value.length >= MAX_SAMPLES
   ) {
     return
   }
@@ -351,19 +549,7 @@ async function handleRecordingStop() {
   try {
     const firstChunk = recordedChunks.value[0]
     const blob = new Blob(recordedChunks.value, { type: firstChunk?.type ?? 'audio/webm' })
-    const wavBlob = await convertToWav(blob)
-    const waveform = await extractWaveform(wavBlob)
-    const duration = await measureDuration(wavBlob)
-    const sample: RecordedSample = {
-      index: completedSamples.value.length,
-      blob: wavBlob,
-      url: URL.createObjectURL(wavBlob),
-      waveform,
-      duration,
-    }
-    completedSamples.value.push(sample)
-    await nextTick()
-    drawWaveforms()
+    const sample = await addSampleFromBlob(blob, 'recording')
     ElMessage({
       type: 'success',
       message: `样本 ${sample.index + 1} 录制完成`,
@@ -371,10 +557,50 @@ async function handleRecordingStop() {
     })
   } catch (error) {
     console.error('[RecordVoiceModal] process error', error)
-    errorMessage.value = '处理录音时出现问题，请重试。'
+    if (error instanceof SampleValidationError) {
+      errorMessage.value =
+        error.code === 'duration-short'
+          ? `录音时间不足 ${MIN_SAMPLE_DURATION} 秒，请重新录制。`
+          : `录音时间超过 ${MAX_SAMPLE_DURATION} 秒，请控制在限定范围内。`
+      ElMessage({
+        type: 'warning',
+        message: errorMessage.value,
+        showClose: true,
+      })
+    } else {
+      errorMessage.value = '处理录音时出现问题，请重试。'
+    }
   } finally {
     isProcessing.value = false
   }
+}
+
+async function addSampleFromBlob(blob: Blob, source: SampleSource, filename?: string): Promise<RecordedSample> {
+  if (completedSamples.value.length >= MAX_SAMPLES) {
+    throw new Error('sample-limit-reached')
+  }
+  const wavBlob = await convertToWav(blob)
+  const waveform = await extractWaveform(wavBlob)
+  const duration = await measureDuration(wavBlob)
+  if (duration < MIN_SAMPLE_DURATION) {
+    throw new SampleValidationError('duration-short', 'duration too short')
+  }
+  if (duration > MAX_SAMPLE_DURATION) {
+    throw new SampleValidationError('duration-long', 'duration too long')
+  }
+  const sample: RecordedSample = {
+    index: completedSamples.value.length,
+    blob: wavBlob,
+    url: URL.createObjectURL(wavBlob),
+    waveform,
+    duration,
+    source,
+    filename,
+  }
+  completedSamples.value.push(sample)
+  await nextTick()
+  drawWaveforms()
+  return sample
 }
 
 function cleanupRecorder() {
