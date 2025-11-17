@@ -12,7 +12,6 @@
           v-if="activeTab === 'operator_logs'"
           type="primary"
           plain
-          size="small"
           :loading="operatorExporting"
           @click="exportOperatorLogs"
         >
@@ -22,7 +21,6 @@
           v-else
           type="primary"
           plain
-          size="small"
           :loading="transcriptExporting"
           @click="exportTranscripts"
         >
@@ -113,15 +111,15 @@
               maxlength="64"
             />
           </el-form-item>
-          <el-form-item label="用户名">
+          <!-- <el-form-item label="用户名">
             <el-input v-model="transcriptFilters.username" placeholder="操作者或账号" clearable maxlength="64" />
-          </el-form-item>
+          </el-form-item> -->
           <el-form-item label="主说话人">
             <el-input v-model="transcriptFilters.speaker" placeholder="例如 speaker_1" clearable maxlength="64" />
           </el-form-item>
-          <el-form-item label="状态">
+          <!-- <el-form-item label="状态">
             <el-input v-model="transcriptFilters.status" placeholder="completed / processing 等" clearable maxlength="32" />
-          </el-form-item>
+          </el-form-item> -->
           <el-form-item label="全文搜索">
             <el-input
               v-model="transcriptFilters.search"
@@ -130,7 +128,7 @@
               maxlength="100"
             />
           </el-form-item>
-          <el-form-item label="时间范围">
+          <!-- <el-form-item label="时间范围">
             <el-date-picker
               v-model="transcriptFilters.dateRange"
               type="datetimerange"
@@ -140,7 +138,7 @@
               :default-time="['00:00:00', '23:59:59']"
               clearable
             />
-          </el-form-item>
+          </el-form-item> -->
           <el-form-item>
             <el-button type="primary" @click="applyTranscriptFilters">应用筛选</el-button>
             <el-button @click="resetTranscriptFilters">重置</el-button>
@@ -155,9 +153,9 @@
             </template>
           </el-table-column>
           <el-table-column prop="session_id" label="会话标识" width="200" show-overflow-tooltip />
-          <el-table-column label="主说话人/操作者" width="180">
+          <el-table-column label="主说话人" width="180">
             <template #default="{ row }">
-              <div>{{ formatTranscriptSpeaker(row) }}</div>
+              <!-- <div>{{ formatTranscriptSpeaker(row) }}</div> -->
               <div v-if="formatTranscriptSpeakers(row)" class="text-xs text-slate-500">
                 {{ formatTranscriptSpeakers(row) }}
               </div>
@@ -166,7 +164,7 @@
           <el-table-column label="文本内容" min-width="220">
             <template #default="{ row }">
               <div class="whitespace-pre-line break-words leading-snug text-slate-700">
-                {{ row.text || '-' }}
+                {{ formatTranscriptText(row.text) }}
               </div>
             </template>
           </el-table-column>
@@ -458,6 +456,13 @@ function formatSimilarity(avg?: number | null, max?: number | null) {
 
 function formatTranscriptSpeaker(record: TranscriptRecord) {
   return record.dominant_speaker || record.operator || record.username || '未知'
+}
+
+function formatTranscriptText(text?: string | null, limit = 35) {
+  if (!text) return '-'
+  const normalized = text.trim()
+  if (normalized.length <= limit) return normalized
+  return `${normalized.slice(0, limit)}…`
 }
 
 function formatTranscriptSpeakers(record: TranscriptRecord) {
