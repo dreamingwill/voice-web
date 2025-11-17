@@ -38,12 +38,24 @@
           size="small"
           class="flex flex-wrap gap-3"
         >
-          <el-form-item label="授权状态">
-            <el-select v-model="operatorFilters.authorized" placeholder="全部" clearable>
-              <el-option label="全部" value="" />
-              <el-option label="已授权" value="true" />
-              <el-option label="未授权" value="false" />
+          <el-form-item label="操作类别">
+            <el-select v-model="operatorFilters.category" placeholder="全部类别" clearable class="w-44">
+              <el-option
+                v-for="item in operatorCategoryOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
             </el-select>
+          </el-form-item>
+          <el-form-item label="关联对象">
+            <el-input
+              v-model="operatorFilters.target"
+              placeholder="输入用户名或 ID"
+              clearable
+              class="w-52"
+              @keyup.enter="applyOperatorFilters"
+            />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="applyOperatorFilters">应用筛选</el-button>
@@ -281,8 +293,18 @@ const activeTab = ref<'operator_logs' | 'transcripts'>('operator_logs')
 const operatorLoading = ref(false)
 const operatorExporting = ref(false)
 const operatorLogs = ref<OperatorLogEntry[]>([])
+const operatorCategoryOptions = [
+  { value: 'create', label: '创建' },
+  { value: 'update', label: '更新' },
+  { value: 'delete', label: '删除' },
+  { value: 'voiceprint_aggregate', label: '声纹聚合' },
+  { value: 'final', label: '语音' },
+  { value: 'audio_start', label: '音频开始' },
+  { value: 'status_change', label: '切换状态' },
+]
 const operatorFilters = reactive({
-  authorized: '' as '' | 'true' | 'false',
+  category: '' as string,
+  target: '',
 })
 const operatorPagination = reactive({
   page: 1,
@@ -335,8 +357,17 @@ async function fetchOperatorLogs() {
       page_size: operatorPagination.pageSize,
       type: 'operator_change',
     }
-    if (operatorFilters.authorized) {
-      params.authorized = operatorFilters.authorized === 'true'
+    if (operatorFilters.category) {
+      params.category = operatorFilters.category
+    }
+    if (operatorFilters.target.trim()) {
+      const trimmed = operatorFilters.target.trim()
+      const maybeId = Number(trimmed)
+      if (!Number.isNaN(maybeId) && Number.isFinite(maybeId)) {
+        params.user_id = maybeId
+      } else {
+        params.username = trimmed
+      }
     }
     const response = await api.get<OperatorLogsResponse>('api/logs', { params })
     operatorLogs.value = response.data?.items ?? []
@@ -409,7 +440,8 @@ function applyOperatorFilters() {
 }
 
 function resetOperatorFilters() {
-  operatorFilters.authorized = ''
+  operatorFilters.category = ''
+  operatorFilters.target = ''
   operatorPagination.page = 1
   void fetchOperatorLogs()
 }
