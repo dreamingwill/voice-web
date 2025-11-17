@@ -1,24 +1,10 @@
 <template>
   <section class="bg-white rounded-lg shadow p-6 space-y-6">
-    <header class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold text-primary">指令管理</h2>
-        <p class="text-sm text-slate-600">
-          管理可识别指令、配置阈值，并支持分页、模糊搜索、编辑与删除。
-        </p>
-      </div>
-      <div class="flex items-center gap-3">
-        <el-switch
-          v-model="localEnabled"
-          :loading="saving"
-          inline-prompt
-          active-text="开启"
-          inactive-text="关闭"
-        />
-        <el-button type="primary" :loading="saving" @click="handleSaveSettings">
-          保存设置
-        </el-button>
-      </div>
+    <header class="space-y-2">
+      <h2 class="text-lg font-semibold text-primary">指令管理</h2>
+      <p class="text-sm text-slate-600">
+        管理可识别指令、配置阈值，并支持分页、模糊搜索、编辑与删除。
+      </p>
     </header>
 
     <el-alert
@@ -28,18 +14,6 @@
       show-icon
       :closable="false"
     />
-
-    <div class="space-y-2">
-      <label class="text-sm font-medium text-slate-700">匹配阈值 (0.50 - 0.95)</label>
-      <el-slider
-        v-model="localThreshold"
-        :min="0.5"
-        :max="0.95"
-        :step="0.01"
-        :show-input="true"
-        :disabled="saving || loading"
-      />
-    </div>
 
     <section class="space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -167,15 +141,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCommandsStore } from '@/stores/useCommands'
 import type { CommandItem } from '@/types/commands'
 
 const commandsStore = useCommandsStore()
 const uploadText = ref('')
-const localEnabled = ref(commandsStore.enabled)
-const localThreshold = ref(commandsStore.matchThreshold)
 const searchKeyword = ref('')
 const isEditVisible = ref(false)
 const editText = ref('')
@@ -183,39 +155,12 @@ const editSubmitting = ref(false)
 const editingTarget = ref<CommandItem | null>(null)
 
 const loading = computed(() => commandsStore.loading)
-const saving = computed(() => commandsStore.saving)
 const uploading = computed(() => commandsStore.uploading)
 const searching = computed(() => commandsStore.searching)
-
-watch(
-  () => commandsStore.enabled,
-  (value) => {
-    localEnabled.value = value
-  },
-)
-
-watch(
-  () => commandsStore.matchThreshold,
-  (value) => {
-    localThreshold.value = Number(value.toFixed(2))
-  },
-)
 
 onMounted(() => {
   void commandsStore.fetchCommands()
 })
-
-async function handleSaveSettings() {
-  const success = await commandsStore.saveSettings({
-    enabled: localEnabled.value,
-    matchThreshold: localThreshold.value,
-  })
-  if (success) {
-    ElMessage.success('指令配置已更新')
-  } else if (commandsStore.error) {
-    ElMessage.error(commandsStore.error)
-  }
-}
 
 async function handleUpload() {
   const lines = uploadText.value.split(/\r?\n/)

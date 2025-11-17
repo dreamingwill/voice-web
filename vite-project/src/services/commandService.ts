@@ -23,7 +23,7 @@ function normalizeList(response: CommandListResponse): CommandListPayload {
     commands: Array.isArray(response.items) ? response.items.map(normalizeItem) : [],
     total: response.total ?? 0,
     page: response.page ?? 1,
-    pageSize: response.page_size ?? 20,
+    pageSize: response.page_size ?? 10,
     updatedAt: response.updated_at ?? null,
   }
 }

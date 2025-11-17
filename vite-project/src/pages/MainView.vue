@@ -5,89 +5,80 @@
       :event="eventsStore.latestUnauthorizedEvent"
       @acknowledge="eventsStore.acknowledgeUnauthorized"
     />
-
-
-
-    <section class="bg-white rounded-lg shadow p-4 space-y-4">
-      <header class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold text-primary">麦克风采集控制</h2>
-        <div class="flex items-center gap-3">
-          <el-button
-            type="primary"
-            :loading="isAudioLoading"
-            @click="toggleRecording"
-          >
-            {{ audioStore.isRecording ? '停止采集' : '开始采集' }}
-          </el-button>
-          <el-button
-            :disabled="!audioStore.isRecording"
-            @click="toggleMute"
-          >
-            {{ audioStore.isMuted ? '取消静音' : '静音' }}
-          </el-button>
-        </div>
-      </header>
-      <AudioLevel :level="audioStore.isMuted ? 0 : audioStore.level" />
-      <p class="text-xs text-slate-500">
-        当前状态：{{ audioStatusText }}
-      </p>
-    </section>
-
-    <div class="grid gap-6 lg:grid-cols-3">
-      <section class="lg:col-span-2 bg-white rounded-lg shadow p-4 flex flex-col gap-4">
+    <div class="grid gap-6 md:grid-cols-3 items-start">
+      <section class="md:col-span-2 bg-white rounded-lg shadow p-4 flex flex-col gap-4 h-full">
         <header class="flex items-center justify-between">
           <h2 class="text-lg font-semibold text-primary">实时转写流</h2>
           <el-button size="small" @click="asrStore.clear">清空</el-button>
         </header>
-        <div ref="transcriptContainer" class="max-h-80 overflow-y-auto pr-2 space-y-3">
-          <article
-            v-for="segment in orderedTranscripts"
-            :key="segment.id"
-            class="rounded-md border border-slate-200 px-3 py-2 bg-slate-50 text-left"
-          >
-            <header class="flex items-start justify-between text-xs text-slate-500 gap-3">
-              <div class="space-y-0.5">
-                <p class="font-medium text-slate-700">{{ segment.speaker ?? '未知说话人' }}</p>
-                <time class="text-[11px] text-slate-500">{{ formatTime(segment.timestamp) }}</time>
-              </div>
-              <div
-                v-if="segment.commandMatch?.matched"
-                class="flex items-center gap-1 text-emerald-700 text-[11px] font-medium"
-              >
-                <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                <span class="truncate max-w-[140px]" :title="segment.commandMatch.command">
-                  {{ segment.commandMatch.command }}
-                </span>
-                <span class="text-emerald-600" v-if="typeof segment.commandMatch.score === 'number'">
-                  {{ formatScore(segment.commandMatch.score) }}
-                </span>
-              </div>
-            </header>
-            <p
-              class="text-sm mt-1"
-              :class="segment.finalized ? 'text-slate-800' : 'text-slate-500 italic'"
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex flex-wrap gap-3">
+            <el-button
+              type="primary"
+              size="large"
+              :loading="isAudioLoading"
+              @click="toggleRecording"
             >
-              {{ segment.text }}
-            </p>
-          </article>
-          <el-empty v-if="!transcripts.length" description="暂无转写数据" />
+              {{ audioStore.isRecording ? '停止采集' : '开始采集' }}
+            </el-button>
+            <el-button
+              size="large"
+              :disabled="!audioStore.isRecording"
+              @click="toggleMute"
+            >
+              {{ audioStore.isMuted ? '取消静音' : '静音' }}
+            </el-button>
+          </div>
+          <p class="text-sm text-slate-600">
+            当前状态：{{ audioStatusText }}
+          </p>
+        </div>
+        <div
+          ref="transcriptContainer"
+          :class="[
+            'pr-2',
+            transcripts.length
+              ? 'h-48 sm:h-[20rem] overflow-y-auto space-y-3'
+              : 'h-48 sm:h-[20rem] flex items-center justify-center text-slate-400'
+          ]"
+        >
+          <template v-if="transcripts.length">
+            <article
+              v-for="segment in orderedTranscripts"
+              :key="segment.id"
+              class="rounded-md border border-slate-200 px-3 py-2 bg-slate-50 text-left"
+            >
+              <header class="flex items-start justify-between text-xs text-slate-500 gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="font-medium text-slate-700">{{ segment.speaker ?? '未知说话人' }}</p>
+                  <time class="text-[11px] text-slate-500">{{ formatTime(segment.timestamp) }}</time>
+                </div>
+                <div
+                  v-if="segment.commandMatch?.matched"
+                  class="flex items-center gap-1 text-emerald-700 text-[11px] font-medium"
+                >
+                  <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  <span class="truncate max-w-[140px]" :title="segment.commandMatch.command">
+                    {{ segment.commandMatch.command }}
+                  </span>
+                  <span class="text-emerald-600" v-if="typeof segment.commandMatch.score === 'number'">
+                    {{ formatScore(segment.commandMatch.score) }}
+                  </span>
+                </div>
+              </header>
+              <p
+                class="text-sm mt-1"
+                :class="segment.finalized ? 'text-slate-800' : 'text-slate-500 italic'"
+              >
+                {{ segment.text }}
+              </p>
+            </article>
+          </template>
+          <p v-else class="text-center text-sm text-slate-400">暂无转写数据</p>
         </div>
       </section>
-      <div class="space-y-6">
-        <CommandMatchCard />
-        <section class="bg-white rounded-lg shadow p-4 flex flex-col gap-4">
-          <header class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-primary">结构化事件</h2>
-            <el-button size="small" @click="eventsStore.clear">清空</el-button>
-          </header>
-          <div ref="eventsContainer" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-            <template v-for="event in events" :key="event.id">
-              <CommandCard v-if="event.type === 'command'" :event="event" />
-              <ReportCard v-else :event="event" />
-            </template>
-            <el-empty v-if="!events.length" description="暂无事件" />
-          </div>
-        </section>
+      <div class="space-y-6 h-full">
+        <CommandMatchCard class="h-full" />
       </div>
     </div>
   </section>
@@ -103,9 +94,6 @@ import { useSpeakerStore } from '@/stores/useSpeaker'
 import { useAudioStore } from '@/stores/useAudio'
 import { startRealtimeStreaming, stopRealtimeStreaming } from '@/services/realtimeClient'
 import AlertBanner from '@/components/alerts/AlertBanner.vue'
-import CommandCard from '@/components/cards/CommandCard.vue'
-import ReportCard from '@/components/cards/ReportCard.vue'
-import AudioLevel from '@/components/audio/AudioLevel.vue'
 import CommandMatchCard from '@/components/cards/CommandMatchCard.vue'
 
 const asrStore = useAsrStore()
@@ -116,21 +104,7 @@ const audioStore = useAudioStore()
 
 const transcripts = computed(() => asrStore.transcripts)
 const orderedTranscripts = computed(() => [...transcripts.value].reverse())
-const events = computed(() => eventsStore.events)
-
-
-
-// const speakerName = computed(
-//   () => speakerStore.current?.name ?? '等待识别说话人',
-// )
-// const speakerRole = computed(() => speakerStore.current?.role ?? '—')
-// const speakerInitials = computed(() => {
-//   const raw = (speakerStore.current?.name ?? '').replace(/\s+/g, '')
-//   if (!raw) return '—'
-//   return raw.slice(0, 2)
-// })
 const transcriptContainer = ref<HTMLElement | null>(null)
-const eventsContainer = ref<HTMLElement | null>(null)
 const isAudioLoading = ref(false)
 const audioStatusText = computed(() => {
   if (!audioStore.isRecording) {
@@ -139,7 +113,7 @@ const audioStatusText = computed(() => {
   if (audioStore.isMuted) {
     return '麦克风静音中'
   }
-  return '采集中，数据流将输出为 16kHz PCM'
+  return '采集中'
 })
 
 onBeforeUnmount(() => {
@@ -155,17 +129,6 @@ watch(
     nextTick(() => {
       if (transcriptContainer.value) {
         transcriptContainer.value.scrollTop = 0
-      }
-    })
-  },
-)
-
-watch(
-  () => events.value.length,
-  () => {
-    nextTick(() => {
-      if (eventsContainer.value) {
-        eventsContainer.value.scrollTop = 0
       }
     })
   },
