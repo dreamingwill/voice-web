@@ -2,6 +2,7 @@ import { useAsrStore } from '@/stores/useAsr'
 import { useConnectionStore } from '@/stores/useConnection'
 import { useEventsStore } from '@/stores/useEvents'
 import { useSpeakerStore } from '@/stores/useSpeaker'
+import { useCommandsStore } from '@/stores/useCommands'
 import type {
   StructuredEvent,
   SpeakerState,
@@ -257,6 +258,7 @@ export class WSService {
                 return undefined
               }).filter((entry): entry is SimilarityCandidate => Boolean(entry))
             : undefined,
+          command_match: parsed.command_match,
         }
         this.finalListeners.forEach((listener) => listener(normalized))
         break
@@ -369,6 +371,7 @@ export function createWsService(url: string) {
   const asrStore = useAsrStore()
   const eventsStore = useEventsStore()
   const speakerStore = useSpeakerStore()
+  const commandsStore = useCommandsStore()
 
   service.onOpen(() => {
     connectionStore.setStatus('connected')
@@ -422,6 +425,7 @@ export function createWsService(url: string) {
       startMs: message.start_ms,
       endMs: message.end_ms,
       similarity: message.similarity,
+      commandMatch: message.command_match,
       timestamp: new Date().toISOString(),
     })
     const uiSegment = asrStore.transcripts.find((item) => item.segmentId === message.segment_id)
@@ -441,6 +445,14 @@ export function createWsService(url: string) {
           }
         : null,
     })
+    if (message.command_match?.matched && message.command_match.command) {
+      commandsStore.setLastMatch({
+        ...message.command_match,
+        command: message.command_match.command,
+        segmentId: message.segment_id,
+        timestamp: new Date().toISOString(),
+      })
+    }
   })
   service.onSpeaker((speaker) => {
     console.log('[asr-debug][speaker]', speaker)

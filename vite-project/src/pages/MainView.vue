@@ -45,9 +45,23 @@
             :key="segment.id"
             class="rounded-md border border-slate-200 px-3 py-2 bg-slate-50 text-left"
           >
-            <header class="flex items-center justify-between text-xs text-slate-500">
-              <span>{{ segment.speaker ?? '未知说话人' }}</span>
-              <time>{{ formatTime(segment.timestamp) }}</time>
+            <header class="flex items-start justify-between text-xs text-slate-500 gap-3">
+              <div class="space-y-0.5">
+                <p class="font-medium text-slate-700">{{ segment.speaker ?? '未知说话人' }}</p>
+                <time class="text-[11px] text-slate-500">{{ formatTime(segment.timestamp) }}</time>
+              </div>
+              <div
+                v-if="segment.commandMatch?.matched"
+                class="flex items-center gap-1 text-emerald-700 text-[11px] font-medium"
+              >
+                <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                <span class="truncate max-w-[140px]" :title="segment.commandMatch.command">
+                  {{ segment.commandMatch.command }}
+                </span>
+                <span class="text-emerald-600" v-if="typeof segment.commandMatch.score === 'number'">
+                  {{ formatScore(segment.commandMatch.score) }}
+                </span>
+              </div>
             </header>
             <p
               class="text-sm mt-1"
@@ -59,24 +73,23 @@
           <el-empty v-if="!transcripts.length" description="暂无转写数据" />
         </div>
       </section>
+      <div class="space-y-6">
+        <CommandMatchCard />
+        <section class="bg-white rounded-lg shadow p-4 flex flex-col gap-4">
+          <header class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-primary">结构化事件</h2>
+            <el-button size="small" @click="eventsStore.clear">清空</el-button>
+          </header>
+          <div ref="eventsContainer" class="space-y-3 max-h-80 overflow-y-auto pr-2">
+            <template v-for="event in events" :key="event.id">
+              <CommandCard v-if="event.type === 'command'" :event="event" />
+              <ReportCard v-else :event="event" />
+            </template>
+            <el-empty v-if="!events.length" description="暂无事件" />
+          </div>
+        </section>
+      </div>
     </div>
-
-    <section
-      v-if="events.length"
-      class="bg-white rounded-lg shadow p-4 flex flex-col gap-4"
-    >
-        <header class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-primary">结构化事件</h2>
-          <el-button size="small" @click="eventsStore.clear">清空</el-button>
-        </header>
-        <div ref="eventsContainer" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-          <template v-for="event in events" :key="event.id">
-            <CommandCard v-if="event.type === 'command'" :event="event" />
-            <ReportCard v-else :event="event" />
-          </template>
-          <el-empty v-if="!events.length" description="暂无事件" />
-        </div>
-      </section>
   </section>
 </template>
 
@@ -93,6 +106,7 @@ import AlertBanner from '@/components/alerts/AlertBanner.vue'
 import CommandCard from '@/components/cards/CommandCard.vue'
 import ReportCard from '@/components/cards/ReportCard.vue'
 import AudioLevel from '@/components/audio/AudioLevel.vue'
+import CommandMatchCard from '@/components/cards/CommandMatchCard.vue'
 
 const asrStore = useAsrStore()
 const connectionStore = useConnectionStore()
@@ -159,6 +173,10 @@ watch(
 
 function formatTime(timestamp: string) {
   return new Date(timestamp).toLocaleTimeString()
+}
+
+function formatScore(score: number) {
+  return `${(score * 100).toFixed(1)}%`
 }
 
 async function toggleRecording() {

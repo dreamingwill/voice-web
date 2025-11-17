@@ -27,6 +27,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/admin/commands',
+      name: 'admin-commands',
+      component: () => import('@/pages/admin/Commands.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/admin/logs',
       name: 'admin-logs',
       component: () => import('@/pages/admin/Logs.vue'),

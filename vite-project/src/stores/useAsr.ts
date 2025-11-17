@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import type { CommandMatchResult } from '@/types/commands'
 import type { TranscriptSegment } from '@/types/realtime'
 
 interface AsrState {
@@ -14,6 +15,7 @@ interface UpsertPayload {
   endMs?: number
   similarity?: number
   timestamp?: string
+  commandMatch?: CommandMatchResult | null
 }
 
 export const useAsrStore = defineStore('asr', {
@@ -33,6 +35,7 @@ export const useAsrStore = defineStore('asr', {
         existing.endMs = payload.endMs ?? existing.endMs
         existing.similarity = payload.similarity ?? existing.similarity
         existing.timestamp = timestamp
+        existing.commandMatch = payload.commandMatch ?? existing.commandMatch
         return
       }
 
@@ -46,6 +49,7 @@ export const useAsrStore = defineStore('asr', {
         startMs: payload.startMs,
         endMs: payload.endMs,
         similarity: payload.similarity,
+        commandMatch: payload.commandMatch,
       }
 
       this.transcripts.push(segment)

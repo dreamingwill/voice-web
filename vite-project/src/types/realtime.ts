@@ -1,3 +1,5 @@
+import type { CommandMatchResult } from '@/types/commands'
+
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected'
 
 export interface SimilarityCandidate {
@@ -23,6 +25,7 @@ export interface FinalTranscriptMessage {
   end_ms: number
   similarity?: number
   topk?: Array<SimilarityCandidate | [string, number]>
+  command_match?: CommandMatchResult
 }
 
 export interface DoneMessage {
@@ -78,6 +81,7 @@ export interface TranscriptSegment {
   startMs?: number
   endMs?: number
   similarity?: number
+  commandMatch?: CommandMatchResult | null
 }
 
 export interface SpeakerState {
