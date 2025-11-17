@@ -6,6 +6,7 @@ import type {
   CommandToggleRequest,
   CommandSearchResponse,
   CommandItem,
+  CommandSearchPayload,
 } from '@/types/commands'
 
 function normalizeItem(item: { id: number; text: string; created_at: string }): CommandItem {
@@ -53,14 +54,21 @@ export async function toggleCommandMatching({
   return normalizeList(response.data)
 }
 
-export async function searchCommands(query: string, limit?: number): Promise<CommandItem[]> {
+export async function searchCommands(query: string, page?: number, pageSize?: number): Promise<CommandSearchPayload> {
   const response = await api.get<CommandSearchResponse>('api/commands/search', {
     params: {
       q: query,
-      limit,
+      page,
+      page_size: pageSize,
     },
   })
-  return Array.isArray(response.data.items) ? response.data.items.map(normalizeItem) : []
+  const items = Array.isArray(response.data.items) ? response.data.items.map(normalizeItem) : []
+  return {
+    items,
+    total: response.data.total ?? items.length,
+    page: response.data.page ?? page ?? 1,
+    pageSize: response.data.page_size ?? pageSize ?? 20,
+  }
 }
 
 export async function updateCommand(commandId: number, text: string): Promise<void> {

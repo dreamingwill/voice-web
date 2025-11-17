@@ -32,6 +32,16 @@ export interface CommandListPayload {
 
 export interface CommandSearchResponse {
   items: CommandItemResponse[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface CommandSearchPayload {
+  items: CommandItem[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 export interface CommandUploadRequest {

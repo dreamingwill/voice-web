@@ -32,6 +32,7 @@
             clearable
             class="w-56"
             @clear="clearSearch"
+            @keyup.enter.native="handleSearch"
           />
           <el-button size="small" :loading="searching" @click="handleSearch">搜索</el-button>
           <el-button size="small" :disabled="!commandsStore.hasSearchResults" @click="clearSearch">
@@ -40,7 +41,17 @@
         </div>
       </div>
 
-      <el-table :data="commandsStore.commands" :loading="loading" border style="width: 100%">
+      <div
+        v-if="commandsStore.hasSearchResults"
+        class="flex flex-wrap items-center justify-between gap-2 rounded border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-600"
+      >
+        <span>
+          搜索关键词「{{ commandsStore.searchQuery }}」，共 {{ commandsStore.searchTotal }} 条匹配结果
+        </span>
+        <span class="text-[11px] text-slate-400">每页最多显示 200 条，可继续翻页查看更多</span>
+      </div>
+
+      <el-table :data="displayedCommands" :loading="loading" border style="width: 100%">
         <el-table-column type="index" width="60" label="#" />
         <el-table-column prop="text" label="指令内容" min-width="240" show-overflow-tooltip />
         <el-table-column prop="createdAt" label="创建时间" width="180">
@@ -59,8 +70,35 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!commandsStore.commands.length && !loading" description="暂无指令" />
-      <div class="flex justify-end">
+      <el-empty
+        v-if="!displayedCommands.length && !loading"
+        :description="
+          commandsStore.hasSearchResults
+            ? `未找到与「${commandsStore.searchQuery}」匹配的指令`
+            : '暂无指令'
+        "
+      />
+      <div
+        v-if="commandsStore.hasSearchResults"
+        class="flex flex-col gap-2 rounded border border-slate-100 p-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <p>
+          第 {{ commandsStore.searchPage }} /
+          {{ Math.max(1, Math.ceil(commandsStore.searchTotal / commandsStore.searchPageSize)) }} 页 ·
+          每页 {{ commandsStore.searchPageSize }} 条
+        </p>
+        <el-pagination
+          background
+          layout="prev, pager, next, sizes"
+          :current-page="commandsStore.searchPage"
+          :total="commandsStore.searchTotal"
+          :page-size="commandsStore.searchPageSize"
+          :page-sizes="[10, 20, 50, 100, 200]"
+          @current-change="handleSearchPageChange"
+          @size-change="handleSearchPageSizeChange"
+        />
+      </div>
+      <div v-else class="flex justify-end">
         <el-pagination
           background
           layout="prev, pager, next, sizes"
@@ -89,34 +127,6 @@
           上传指令
         </el-button>
       </div>
-    </section>
-
-    <section class="space-y-3">
-      <header class="flex items-center justify-between">
-        <h3 class="text-base font-semibold text-primary">搜索结果</h3>
-        <span class="text-xs text-slate-500">使用模糊搜索快速定位单条指令</span>
-      </header>
-      <el-table
-        v-if="commandsStore.hasSearchResults"
-        :data="commandsStore.searchResults"
-        :loading="searching"
-        border
-        max-height="260"
-      >
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="text" label="指令内容" show-overflow-tooltip />
-        <el-table-column label="操作" width="200">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="openEdit(row)">
-              编辑
-            </el-button>
-            <el-button link type="danger" size="small" @click="confirmDelete(row)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-empty v-else description="暂无搜索结果" />
     </section>
 
     <el-dialog v-model="isEditVisible" title="编辑指令" width="min(420px, 92vw)">
@@ -157,6 +167,9 @@ const editingTarget = ref<CommandItem | null>(null)
 const loading = computed(() => commandsStore.loading)
 const uploading = computed(() => commandsStore.uploading)
 const searching = computed(() => commandsStore.searching)
+const displayedCommands = computed(() =>
+  commandsStore.hasSearchResults ? commandsStore.searchResults : commandsStore.commands,
+)
 
 onMounted(() => {
   void commandsStore.fetchCommands()
@@ -184,6 +197,14 @@ async function handleSearch() {
 function clearSearch() {
   searchKeyword.value = ''
   commandsStore.clearSearchResults()
+}
+
+async function handleSearchPageChange(page: number) {
+  await commandsStore.changeSearchPage(page)
+}
+
+async function handleSearchPageSizeChange(size: number) {
+  await commandsStore.changeSearchPageSize(size)
 }
 
 function openEdit(command: CommandItem) {

@@ -31,6 +31,11 @@ interface CommandsState {
   lastMatch: CommandMatchSnapshot | null
   searching: boolean
   searchResults: CommandItem[]
+  searchTotal: number
+  searchPage: number
+  searchPageSize: number
+  searchQuery: string
+  searchActive: boolean
 }
 
 export const useCommandsStore = defineStore('commands', {
@@ -50,10 +55,15 @@ export const useCommandsStore = defineStore('commands', {
     lastMatch: null,
     searching: false,
     searchResults: [],
+    searchTotal: 0,
+    searchPage: 1,
+    searchPageSize: 20,
+    searchQuery: '',
+    searchActive: false,
   }),
   getters: {
     commandCount: (state) => state.total,
-    hasSearchResults: (state) => state.searchResults.length > 0,
+    hasSearchResults: (state) => state.searchActive,
   },
   actions: {
     async fetchCommands(options?: { page?: number; pageSize?: number; force?: boolean }) {
@@ -145,23 +155,49 @@ export const useCommandsStore = defineStore('commands', {
         this.uploading = false
       }
     },
-    async search(keyword: string) {
-      if (!keyword.trim()) {
-        this.searchResults = []
+    async search(keyword: string, options?: { page?: number; pageSize?: number }) {
+      const normalized = keyword.trim()
+      if (!normalized) {
+        this.clearSearchResults()
+        this.error = null
         return
       }
+      const nextPage = options?.page ?? (normalized === this.searchQuery ? this.searchPage : 1)
+      const nextPageSize = options?.pageSize ?? this.searchPageSize
       this.searching = true
+      this.error = null
       try {
-        this.searchResults = await searchCommands(keyword.trim())
+        const payload = await searchCommands(normalized, nextPage, nextPageSize)
+        this.searchResults = payload.items
+        this.searchTotal = payload.total
+        this.searchPage = payload.page
+        this.searchPageSize = payload.pageSize
+        this.searchQuery = normalized
+        this.searchActive = true
       } catch (error) {
         console.error('[useCommandsStore] search failed', error)
         this.error = '搜索指令失败'
+        this.searchResults = []
+        this.searchTotal = 0
+        this.searchActive = false
       } finally {
         this.searching = false
       }
     },
+    async changeSearchPage(page: number) {
+      if (!this.searchActive || page === this.searchPage) return
+      await this.search(this.searchQuery, { page, pageSize: this.searchPageSize })
+    },
+    async changeSearchPageSize(size: number) {
+      if (!this.searchActive || size === this.searchPageSize) return
+      await this.search(this.searchQuery, { page: 1, pageSize: size })
+    },
     clearSearchResults() {
       this.searchResults = []
+      this.searchTotal = 0
+      this.searchPage = 1
+      this.searchQuery = ''
+      this.searchActive = false
     },
     async updateCommandText(commandId: number, text: string) {
       try {
@@ -186,6 +222,11 @@ export const useCommandsStore = defineStore('commands', {
         }
         await this.fetchCommands({ page: this.page, pageSize: this.pageSize, force: true })
         this.searchResults = this.searchResults.filter((item) => item.id !== commandId)
+        if (this.searchActive && this.searchQuery) {
+          const nextPage =
+            this.searchResults.length === 0 && this.searchPage > 1 ? this.searchPage - 1 : this.searchPage
+          await this.search(this.searchQuery, { page: nextPage, pageSize: this.searchPageSize })
+        }
       } catch (error) {
         console.error('[useCommandsStore] removeCommand failed', error)
         throw new Error('删除指令失败')
