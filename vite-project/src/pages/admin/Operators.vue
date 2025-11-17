@@ -3,9 +3,9 @@
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-semibold text-primary">操作员与声纹管理</h2>
-        <p class="text-sm text-slate-600">
+        <!-- <p class="text-sm text-slate-600">
           维护操作员资料、执行新增/编辑/停用等操作，并支持现场声纹登记流程。
-        </p>
+        </p> -->
       </div>
       <el-button type="primary" @click="openCreateDialog">
         新增操作员

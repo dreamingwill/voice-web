@@ -24,21 +24,18 @@
             {{ commandsStore.updatedAt ? formatTime(commandsStore.updatedAt) : '—' }}
           </p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-wrap items-center gap-3">
           <el-input
             v-model="searchKeyword"
             placeholder="输入关键词搜索"
-            size="small"
             clearable
-            class="w-56"
+            class="w-60"
             @clear="clearSearch"
             @keyup.enter.native="handleSearch"
           />
-          <el-button size="small" :loading="searching" @click="handleSearch">搜索</el-button>
-          <el-button size="small" :disabled="!commandsStore.hasSearchResults" @click="clearSearch">
-            重置
-          </el-button>
-          <el-button size="small" type="success" @click="openUploadDialog">
+          <el-button type="primary" :loading="searching" @click="handleSearch">查询</el-button>
+          <el-button :disabled="searching" @click="clearSearch">重置</el-button>
+          <el-button type="success" @click="openUploadDialog">
             批量上传指令
           </el-button>
         </div>
