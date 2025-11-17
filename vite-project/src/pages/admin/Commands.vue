@@ -1,11 +1,11 @@
 <template>
   <section class="bg-white rounded-lg shadow p-6 space-y-6">
-    <header class="space-y-2">
+    <!-- <header class="space-y-2">
       <h2 class="text-lg font-semibold text-primary">指令管理</h2>
       <p class="text-sm text-slate-600">
         管理可识别指令、配置阈值，并支持分页、模糊搜索、编辑与删除。
       </p>
-    </header>
+    </header> -->
 
     <el-alert
       v-if="commandsStore.error"
@@ -18,7 +18,7 @@
     <section class="space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="space-y-1">
-          <h3 class="text-base font-semibold text-primary">已配置指令</h3>
+          <h2 class="text-lg font-semibold text-primary">已配置指令</h2>
           <p class="text-xs text-slate-500">
             共 {{ commandsStore.commandCount }} 条 · 最近更新
             {{ commandsStore.updatedAt ? formatTime(commandsStore.updatedAt) : '—' }}
@@ -36,7 +36,10 @@
           />
           <el-button size="small" :loading="searching" @click="handleSearch">搜索</el-button>
           <el-button size="small" :disabled="!commandsStore.hasSearchResults" @click="clearSearch">
-            清除结果
+            重置
+          </el-button>
+          <el-button size="small" type="success" @click="openUploadDialog">
+            批量上传指令
           </el-button>
         </div>
       </div>
@@ -112,23 +115,6 @@
       </div>
     </section>
 
-    <section class="space-y-3">
-      <h3 class="text-base font-semibold text-primary">批量上传指令</h3>
-      <p class="text-xs text-slate-500">每行一条指令，上传后将自动刷新识别缓存。</p>
-      <el-input
-        v-model="uploadText"
-        type="textarea"
-        :rows="6"
-        placeholder="示例：&#10;站综合信息检查一分钟准备&#10;中央指挥部确认完毕"
-      />
-      <div class="flex justify-end gap-3">
-        <el-button :disabled="!uploadText.trim()" @click="uploadText = ''">清空</el-button>
-        <el-button type="primary" :loading="uploading" @click="handleUpload">
-          上传指令
-        </el-button>
-      </div>
-    </section>
-
     <el-dialog v-model="isEditVisible" title="编辑指令" width="min(420px, 92vw)">
       <el-input
         v-model="editText"
@@ -147,6 +133,24 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="isUploadVisible" title="批量上传指令" width="min(520px, 92vw)">
+      <p class="text-xs text-slate-500 mb-2">每行一条指令，上传后将自动刷新识别缓存。</p>
+      <el-input
+        v-model="uploadText"
+        type="textarea"
+        :rows="8"
+        placeholder="示例：&#10;站综合信息检查一分钟准备&#10;中央指挥部确认完毕"
+      />
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <el-button @click="closeUploadDialog" :disabled="uploading">取消</el-button>
+          <el-button :disabled="!uploadText.trim()" :loading="uploading" type="primary" @click="handleUpload">
+            上传
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -160,6 +164,7 @@ const commandsStore = useCommandsStore()
 const uploadText = ref('')
 const searchKeyword = ref('')
 const isEditVisible = ref(false)
+const isUploadVisible = ref(false)
 const editText = ref('')
 const editSubmitting = ref(false)
 const editingTarget = ref<CommandItem | null>(null)
@@ -180,10 +185,19 @@ async function handleUpload() {
   const success = await commandsStore.uploadCommandList(lines)
   if (success) {
     uploadText.value = ''
+    isUploadVisible.value = false
     ElMessage.success('指令上传成功')
   } else if (commandsStore.error) {
     ElMessage.error(commandsStore.error)
   }
+}
+
+function openUploadDialog() {
+  isUploadVisible.value = true
+}
+
+function closeUploadDialog() {
+  isUploadVisible.value = false
 }
 
 async function handleSearch() {
@@ -251,6 +265,9 @@ async function confirmDelete(command: CommandItem) {
 }
 
 function formatTime(timestamp: string) {
-  return new Date(timestamp).toLocaleString()
+  return new Date(timestamp).toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+  })
 }
 </script>

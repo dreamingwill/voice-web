@@ -90,7 +90,7 @@
             :total="operatorPagination.total"
             :page-size="operatorPagination.pageSize"
             :current-page="operatorPagination.page"
-            :page-sizes="[20, 50, 100]"
+            :page-sizes="[10, 20, 50, 100]"
             @size-change="handleOperatorPageSizeChange"
             @current-change="handleOperatorPageChange"
           />
@@ -209,7 +209,7 @@
             :total="transcriptPagination.total"
             :page-size="transcriptPagination.pageSize"
             :current-page="transcriptPagination.page"
-            :page-sizes="[20, 50, 100]"
+            :page-sizes="[10, 20, 50, 100]"
             @size-change="handleTranscriptPageSizeChange"
             @current-change="handleTranscriptPageChange"
           />
@@ -288,7 +288,7 @@ const operatorFilters = reactive({
 })
 const operatorPagination = reactive({
   page: 1,
-  pageSize: 20,
+  pageSize: 10,
   total: 0,
 })
 
@@ -305,7 +305,7 @@ const transcriptFilters = reactive({
 })
 const transcriptPagination = reactive({
   page: 1,
-  pageSize: 20,
+  pageSize: 10,
   total: 0,
 })
 const transcriptsLoaded = ref(false)
