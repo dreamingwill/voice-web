@@ -7,9 +7,21 @@
     />
     <div class="grid gap-6 md:grid-cols-3 items-start">
       <section class="md:col-span-2 bg-white rounded-lg shadow p-4 flex flex-col gap-4 h-full">
-        <header class="flex items-center justify-between">
+        <header class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-lg font-semibold text-primary">实时转写流</h2>
-          <el-button size="small" @click="asrStore.clear">清空</el-button>
+          <div class="flex items-center gap-3 text-sm text-slate-600">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-800">说话人识别</span>
+              <el-switch
+                :model-value="systemSettingsStore.enableSpeakerRecognition"
+                :loading="speakerToggleLoading"
+                :disabled="speakerToggleDisabled"
+                active-color="#16a34a"
+                @change="handleSpeakerToggle"
+              />
+            </div>
+            <el-button size="small" @click="asrStore.clear">清空</el-button>
+          </div>
         </header>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex flex-wrap gap-3">
@@ -29,8 +41,11 @@
               {{ audioStore.isMuted ? '取消静音' : '静音' }}
             </el-button>
           </div>
-          <p class="text-sm text-slate-600">
-            当前状态：{{ audioStatusText }}
+          <p class="text-sm text-slate-600 space-y-0.5">
+            <span class="block">当前状态：{{ audioStatusText }}</span>
+            <span class="block text-xs text-slate-800">
+              说话人识别：{{ speakerStatusSummary }}
+            </span>
           </p>
         </div>
         <div
@@ -85,13 +100,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAsrStore } from '@/stores/useAsr'
 import { useConnectionStore } from '@/stores/useConnection'
 import { useEventsStore } from '@/stores/useEvents'
 import { useSpeakerStore } from '@/stores/useSpeaker'
 import { useAudioStore } from '@/stores/useAudio'
+import { useSystemSettingsStore } from '@/stores/useSystemSettings'
 import { startRealtimeStreaming, stopRealtimeStreaming } from '@/services/realtimeClient'
 import AlertBanner from '@/components/alerts/AlertBanner.vue'
 import CommandMatchCard from '@/components/cards/CommandMatchCard.vue'
@@ -101,6 +117,7 @@ const connectionStore = useConnectionStore()
 const eventsStore = useEventsStore()
 const speakerStore = useSpeakerStore()
 const audioStore = useAudioStore()
+const systemSettingsStore = useSystemSettingsStore()
 
 const transcripts = computed(() => asrStore.transcripts)
 const orderedTranscripts = computed(() => [...transcripts.value].reverse())
@@ -114,6 +131,19 @@ const audioStatusText = computed(() => {
     return '麦克风静音中'
   }
   return '采集中'
+})
+const speakerToggleLoading = computed(() => systemSettingsStore.loading || systemSettingsStore.updating)
+const speakerToggleDisabled = computed(() => !systemSettingsStore.initialized || speakerToggleLoading.value)
+const speakerStatusSummary = computed(() => {
+  const globalEnabled = systemSettingsStore.enableSpeakerRecognition
+  const sessionState = systemSettingsStore.sessionSpeakerEnabled
+  const globalText = globalEnabled ? '已开启（新建会话生效）' : '已关闭（新建会话生效）'
+  if (sessionState == null) return `${globalText} · 当前会话状态未知`
+  return `${globalText} · 当前会话${sessionState ? '已启用' : '已禁用'}`
+})
+
+onMounted(() => {
+  void systemSettingsStore.loadSettings()
 })
 
 onBeforeUnmount(() => {
@@ -187,5 +217,9 @@ async function toggleMute() {
     message: audioStore.isMuted ? '已静音麦克风' : '已恢复麦克风',
     showClose: true,
   })
+}
+
+async function handleSpeakerToggle(value: boolean) {
+  await systemSettingsStore.toggleSpeakerRecognition(Boolean(value))
 }
 </script>

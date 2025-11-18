@@ -2,6 +2,7 @@ import { useAsrStore } from '@/stores/useAsr'
 import { useConnectionStore } from '@/stores/useConnection'
 import { useEventsStore } from '@/stores/useEvents'
 import { useSpeakerStore } from '@/stores/useSpeaker'
+import { useSystemSettingsStore } from '@/stores/useSystemSettings'
 import { useCommandsStore } from '@/stores/useCommands'
 import type {
   StructuredEvent,
@@ -464,6 +465,10 @@ export function createWsService(url: string) {
   service.onMeta((meta) => {
     if (typeof meta.latency === 'number') {
       connectionStore.setLatency(meta.latency)
+    }
+    if (typeof meta.speakerRecognitionEnabled === 'boolean') {
+      const systemSettingsStore = useSystemSettingsStore()
+      systemSettingsStore.setSessionSpeakerEnabled(meta.speakerRecognitionEnabled)
     }
   })
 
