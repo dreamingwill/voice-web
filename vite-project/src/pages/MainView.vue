@@ -12,13 +12,22 @@
           <div class="flex items-center gap-3 text-sm text-slate-600">
             <div class="flex items-center gap-2">
               <span class="text-xs text-slate-800">说话人识别</span>
-              <el-switch
-                :model-value="systemSettingsStore.enableSpeakerRecognition"
-                :loading="speakerToggleLoading"
-                :disabled="speakerToggleDisabled"
-                active-color="#16a34a"
-                @change="handleSpeakerToggle"
-              />
+              <div class="flex items-center gap-1">
+                <el-switch
+                  :model-value="systemSettingsStore.enableSpeakerRecognition"
+                  :loading="speakerToggleLoading"
+                  :disabled="speakerToggleDisabled || audioStore.isRecording"
+                  active-color="#16a34a"
+                  @change="handleSpeakerToggle"
+                />
+                <el-tooltip
+                  v-if="audioStore.isRecording"
+                  content="采集中无法修改说话人识别，请停止采集后重试"
+                  placement="bottom"
+                >
+                  <el-icon class="text-amber-500 text-xs"><Warning /></el-icon>
+                </el-tooltip>
+              </div>
             </div>
             <el-button size="small" @click="asrStore.clear">清空</el-button>
           </div>
@@ -48,6 +57,79 @@
             </span>
           </p>
         </div>
+        <section class="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+          <header class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold text-slate-800">音频增强</p>
+              <!-- <p class="text-xs text-slate-500">每次握手时将所选配置同步给后端</p> -->
+              <p v-if="enhancementControlsDisabled" class="text-[11px] text-amber-600">
+                采集中不可修改，请停止采集后再次调整
+              </p>
+            </div>
+            <p class="text-[11px] text-slate-500 sm:text-right">{{ enhancementStatusText }}</p>
+          </header>
+          <el-alert
+            v-if="enhancementError"
+            type="error"
+            :title="enhancementError"
+            :closable="false"
+            show-icon
+          />
+          <div class="space-y-2">
+            <p class="text-sm font-medium text-slate-700">降噪模式&强度设置</p>
+            <div v-if="audioEnhancementStore.loading" class="text-xs text-slate-500">正在加载降噪模式...</div>
+            <el-empty
+              v-else-if="!noiseModeOptions.length"
+              description="暂无可用降噪模式"
+              :image-size="80"
+            />
+            <el-radio-group
+              v-else
+              v-model="selectedNoiseMode"
+              class="flex flex-wrap gap-3"
+              :disabled="enhancementControlsDisabled"
+            >
+              <el-radio
+                v-for="mode in noiseModeOptions"
+                :key="mode.id"
+                :label="mode.id"
+                class="items-start rounded-md border border-transparent bg-slate-50 px-3 py-2 text-left hover:border-slate-200 basis-[calc(50%-0.5rem)] sm:basis-auto"
+              >
+                <div class="flex flex-col text-left">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-slate-800">{{ mode.label }}</span>
+                    <el-tag v-if="mode.recommended" size="small" type="success">推荐</el-tag>
+                  </div>
+                  <!-- <p v-if="mode.description" class="text-xs text-slate-500">{{ mode.description }}</p> -->
+                </div>
+              </el-radio>
+            </el-radio-group>
+          </div>
+          <!-- <div class="space-y-2">
+            <el-input-number
+              v-model="selectedNoiseStrength"
+              :min="noiseStrengthConfig.min"
+              :max="noiseStrengthConfig.max"
+              :step="noiseStrengthConfig.step ?? 0.1"
+              :precision="1"
+              :disabled="enhancementControlsDisabled"
+            />
+          </div> -->
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-slate-700">
+                {{ audioEnhancementStore.dereverbOption?.label ?? '启用 Dereverb（WPE）' }}
+              </p>
+              <p class="text-xs text-slate-500">
+                {{
+                  audioEnhancementStore.dereverbOption?.description ??
+                  '在有混响的环境中执行 WPE 以提升语音清晰度'
+                }}
+              </p>
+            </div>
+            <el-switch v-model="dereverbEnabled" :disabled="enhancementControlsDisabled" />
+          </div>
+        </section>
         <div
           ref="transcriptContainer"
           :class="[
@@ -102,12 +184,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Warning } from '@element-plus/icons-vue'
 import { useAsrStore } from '@/stores/useAsr'
 import { useConnectionStore } from '@/stores/useConnection'
 import { useEventsStore } from '@/stores/useEvents'
 import { useSpeakerStore } from '@/stores/useSpeaker'
 import { useAudioStore } from '@/stores/useAudio'
 import { useSystemSettingsStore } from '@/stores/useSystemSettings'
+import { useAudioEnhancementStore } from '@/stores/useAudioEnhancement'
 import { startRealtimeStreaming, stopRealtimeStreaming } from '@/services/realtimeClient'
 import AlertBanner from '@/components/alerts/AlertBanner.vue'
 import CommandMatchCard from '@/components/cards/CommandMatchCard.vue'
@@ -118,6 +202,7 @@ const eventsStore = useEventsStore()
 const speakerStore = useSpeakerStore()
 const audioStore = useAudioStore()
 const systemSettingsStore = useSystemSettingsStore()
+const audioEnhancementStore = useAudioEnhancementStore()
 
 const transcripts = computed(() => asrStore.transcripts)
 const orderedTranscripts = computed(() => [...transcripts.value].reverse())
@@ -142,8 +227,45 @@ const speakerStatusSummary = computed(() => {
   return `${globalText} · 当前会话${sessionState ? '已启用' : '已禁用'}`
 })
 
+const noiseModeOptions = computed(() => audioEnhancementStore.noiseModes)
+const noiseStrengthConfig = computed(() => audioEnhancementStore.noiseStrengthConfig)
+const selectedNoiseMode = computed({
+  get: () => audioEnhancementStore.selectedNoiseMode,
+  set: (value: string) => audioEnhancementStore.setNoiseMode(value),
+})
+const selectedNoiseStrength = computed({
+  get: () => audioEnhancementStore.noiseStrength,
+  set: (value: number) => audioEnhancementStore.setNoiseStrength(value),
+})
+const dereverbEnabled = computed({
+  get: () => audioEnhancementStore.enableDereverb,
+  set: (value: boolean) => audioEnhancementStore.setDereverb(value),
+})
+const enhancementStatusText = computed(() => {
+  const session = audioEnhancementStore.sessionEnhancement
+  if (!session) {
+    return '当前会话尚未返回增强信息'
+  }
+  const noiseModeId = session.noiseMode ?? audioEnhancementStore.selectedNoiseMode
+  const noiseModeLabel = noiseModeOptions.value.find((item) => item.id === noiseModeId)?.label ?? noiseModeId
+  const strength =
+    typeof session.noiseStrength === 'number' ? session.noiseStrength.toFixed(1) : selectedNoiseStrength.value.toFixed(1)
+  const dereverbText =
+    typeof session.enableDereverb === 'boolean'
+      ? session.enableDereverb
+        ? 'Dereverb 已启用'
+        : 'Dereverb 未启用'
+      : dereverbEnabled.value
+        ? 'Dereverb 已启用'
+        : 'Dereverb 未启用'
+  return `当前会话：${noiseModeLabel} · 强度 ${strength} · ${dereverbText}`
+})
+const enhancementError = computed(() => audioEnhancementStore.error)
+const enhancementControlsDisabled = computed(() => audioStore.isRecording)
+
 onMounted(() => {
   void systemSettingsStore.loadSettings()
+  void audioEnhancementStore.loadOptions()
 })
 
 onBeforeUnmount(() => {

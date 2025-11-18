@@ -26,12 +26,12 @@
         </el-button>
       </div>
       <div class="space-y-1">
-        <label class="text-xs font-medium text-slate-600">匹配阈值 (0.50 - 0.95)</label>
+        <label class="text-xs font-medium text-slate-600">匹配阈值 (0.50 - 0.99)</label>
         <div class="flex flex-wrap items-center gap-2">
           <el-input-number
             v-model="localThreshold"
             :min="0.5"
-            :max="0.95"
+            :max="0.99"
             :step="0.01"
             :precision="2"
             size="small"

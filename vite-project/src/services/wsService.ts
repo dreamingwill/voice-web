@@ -4,6 +4,8 @@ import { useEventsStore } from '@/stores/useEvents'
 import { useSpeakerStore } from '@/stores/useSpeaker'
 import { useSystemSettingsStore } from '@/stores/useSystemSettings'
 import { useCommandsStore } from '@/stores/useCommands'
+import { useAudioEnhancementStore } from '@/stores/useAudioEnhancement'
+import type { AudioEnhancementPayload, SessionEnhancementState } from '@/types/audioEnhancement'
 import type {
   StructuredEvent,
   SpeakerState,
@@ -33,6 +35,7 @@ interface ConnectOptions {
     username?: string
   }
   locale?: string
+  enhancement?: AudioEnhancementPayload
 }
 
 const DEFAULT_OPTIONS: Required<Pick<WSServiceOptions, 'heartbeatInterval' | 'reconnectDelay' | 'maxReconnectDelay'>> = {
@@ -59,6 +62,7 @@ export class WSService {
   private token: string | null = null
   private operatorInfo: ConnectOptions['operator'] = undefined
   private locale: string | null = null
+  private enhancementConfig: AudioEnhancementPayload | null = null
 
   private readonly partialListeners = new Set<Listener<PartialTranscriptMessage>>()
   private readonly finalListeners = new Set<Listener<FinalTranscriptMessage>>()
@@ -89,6 +93,7 @@ export class WSService {
     this.token = options?.token ?? null
     this.operatorInfo = options?.operator
     this.locale = options?.locale ?? null
+    this.enhancementConfig = options?.enhancement ?? null
     this.readyState = 'connecting'
     this.manualClose = false
     this.shouldReconnect = true
@@ -119,6 +124,7 @@ export class WSService {
             token: this.token ?? undefined,
             operator: this.operatorInfo ?? undefined,
             locale: this.locale ?? 'zh-CN',
+            enhancement: this.enhancementConfig ?? undefined,
           },
         })
       }
@@ -346,6 +352,7 @@ export class WSService {
           token: this.token ?? undefined,
           operator: this.operatorInfo ?? undefined,
           locale: this.locale ?? undefined,
+          enhancement: this.enhancementConfig ?? undefined,
         })
         this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay)
       }
@@ -469,6 +476,10 @@ export function createWsService(url: string) {
     if (typeof meta.speakerRecognitionEnabled === 'boolean') {
       const systemSettingsStore = useSystemSettingsStore()
       systemSettingsStore.setSessionSpeakerEnabled(meta.speakerRecognitionEnabled)
+    }
+    if (meta.enhancement && typeof meta.enhancement === 'object') {
+      const audioEnhancementStore = useAudioEnhancementStore()
+      audioEnhancementStore.setSessionEnhancement(meta.enhancement as SessionEnhancementState)
     }
   })
 
