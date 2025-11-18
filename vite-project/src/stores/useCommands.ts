@@ -5,9 +5,10 @@ import {
   searchCommands,
   toggleCommandMatching,
   updateCommand,
+  updateCommandStatus,
   uploadCommands,
 } from '@/services/commandService'
-import type { CommandItem, CommandMatchResult } from '@/types/commands'
+import type { CommandItem, CommandMatchResult, CommandStatus } from '@/types/commands'
 
 interface CommandMatchSnapshot extends CommandMatchResult {
   command: string
@@ -210,6 +211,16 @@ export const useCommandsStore = defineStore('commands', {
       } catch (error) {
         console.error('[useCommandsStore] updateCommandText failed', error)
         throw new Error('更新指令失败')
+      }
+    },
+    async toggleCommandStatus(commandId: number, status: CommandStatus) {
+      try {
+        const updated = await updateCommandStatus(commandId, status)
+        this.commands = this.commands.map((item) => (item.id === commandId ? updated : item))
+        this.searchResults = this.searchResults.map((item) => (item.id === commandId ? updated : item))
+      } catch (error) {
+        console.error('[useCommandsStore] toggleCommandStatus failed', error)
+        throw new Error('切换指令状态失败')
       }
     },
     async removeCommand(commandId: number) {

@@ -1,13 +1,17 @@
+export type CommandStatus = 'enabled' | 'disabled'
+
 export interface CommandItem {
   id: number
   text: string
   createdAt: string
+  status: CommandStatus
 }
 
 export interface CommandItemResponse {
   id: number
   text: string
   created_at: string
+  status?: CommandStatus
 }
 
 export interface CommandListResponse {
@@ -51,6 +55,10 @@ export interface CommandUploadRequest {
 export interface CommandToggleRequest {
   enabled: boolean
   matchThreshold?: number
+}
+
+export interface CommandStatusUpdateRequest {
+  status: CommandStatus
 }
 
 export interface CommandMatchResult {

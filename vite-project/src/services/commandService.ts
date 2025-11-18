@@ -7,13 +7,17 @@ import type {
   CommandSearchResponse,
   CommandItem,
   CommandSearchPayload,
+  CommandItemResponse,
+  CommandStatus,
+  CommandStatusUpdateRequest,
 } from '@/types/commands'
 
-function normalizeItem(item: { id: number; text: string; created_at: string }): CommandItem {
+function normalizeItem(item: CommandItemResponse): CommandItem {
   return {
     id: item.id,
     text: item.text,
     createdAt: item.created_at,
+    status: item.status ?? 'enabled',
   }
 }
 
@@ -77,4 +81,10 @@ export async function updateCommand(commandId: number, text: string): Promise<vo
 
 export async function deleteCommand(commandId: number): Promise<void> {
   await api.delete(`api/commands/${commandId}`)
+}
+
+export async function updateCommandStatus(commandId: number, status: CommandStatus): Promise<CommandItem> {
+  const body: CommandStatusUpdateRequest = { status }
+  const response = await api.patch<CommandItemResponse>(`api/commands/${commandId}/status`, body)
+  return normalizeItem(response.data)
 }

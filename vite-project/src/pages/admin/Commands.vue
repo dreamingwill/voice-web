@@ -59,13 +59,30 @@
             {{ formatTime(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column prop="status" label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" size="small">
+              {{ row.status === 'enabled' ? '启用' : '禁用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="openEdit(row)">
               编辑
             </el-button>
             <el-button link type="danger" size="small" @click="confirmDelete(row)">
               删除
+            </el-button>
+            <el-button
+              link
+              :type="row.status === 'enabled' ? 'warning' : 'success'"
+              size="small"
+              :loading="togglingCommandId === row.id"
+              :disabled="togglingCommandId === row.id"
+              @click="toggleStatus(row)"
+            >
+              {{ row.status === 'enabled' ? '禁用' : '启用' }}
             </el-button>
           </template>
         </el-table-column>
@@ -155,7 +172,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCommandsStore } from '@/stores/useCommands'
-import type { CommandItem } from '@/types/commands'
+import type { CommandItem, CommandStatus } from '@/types/commands'
 
 const commandsStore = useCommandsStore()
 const uploadText = ref('')
@@ -165,6 +182,7 @@ const isUploadVisible = ref(false)
 const editText = ref('')
 const editSubmitting = ref(false)
 const editingTarget = ref<CommandItem | null>(null)
+const togglingCommandId = ref<number | null>(null)
 
 const loading = computed(() => commandsStore.loading)
 const uploading = computed(() => commandsStore.uploading)
@@ -258,6 +276,19 @@ async function confirmDelete(command: CommandItem) {
     ElMessage.success('指令已删除')
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '删除失败')
+  }
+}
+
+async function toggleStatus(command: CommandItem) {
+  const nextStatus: CommandStatus = command.status === 'enabled' ? 'disabled' : 'enabled'
+  togglingCommandId.value = command.id
+  try {
+    await commandsStore.toggleCommandStatus(command.id, nextStatus)
+    ElMessage.success(`指令已${nextStatus === 'enabled' ? '启用' : '禁用'}`)
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '切换状态失败')
+  } finally {
+    togglingCommandId.value = null
   }
 }
 
