@@ -228,7 +228,6 @@ const speakerStatusSummary = computed(() => {
 })
 
 const noiseModeOptions = computed(() => audioEnhancementStore.noiseModes)
-const noiseStrengthConfig = computed(() => audioEnhancementStore.noiseStrengthConfig)
 const selectedNoiseMode = computed({
   get: () => audioEnhancementStore.selectedNoiseMode,
   set: (value: string) => audioEnhancementStore.setNoiseMode(value),
