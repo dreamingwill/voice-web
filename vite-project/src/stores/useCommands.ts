@@ -4,11 +4,46 @@ import {
   fetchCommandList,
   searchCommands,
   toggleCommandMatching,
-  updateCommand,
+  updateCommand as updateCommandRequest,
   updateCommandStatus,
   uploadCommands,
 } from '@/services/commandService'
-import type { CommandItem, CommandMatchResult, CommandStatus } from '@/types/commands'
+import type { CommandItem, CommandMatchResult, CommandStatus, CommandUploadItem } from '@/types/commands'
+
+const BULK_CODE_DELIMITERS = ['\t', '|', ',', '，']
+
+function parseUploadLine(line: string): CommandUploadItem | null {
+  const trimmed = line.trim()
+  if (!trimmed) return null
+
+  for (const delimiter of BULK_CODE_DELIMITERS) {
+    const index = trimmed.indexOf(delimiter)
+    if (index > 0) {
+      const codePart = trimmed.slice(0, index).trim()
+      const textPart = trimmed.slice(index + 1).trim()
+      if (textPart) {
+        return {
+          text: textPart,
+          code: codePart || undefined,
+        }
+      }
+    }
+  }
+
+  const multiSpaceMatch = trimmed.match(/^(\S+)\s{2,}(.+)$/)
+  if (multiSpaceMatch) {
+    const codePart = multiSpaceMatch[1]?.trim()
+    const textPart = multiSpaceMatch[2]?.trim()
+    if (textPart) {
+      return {
+        text: textPart,
+        code: codePart || undefined,
+      }
+    }
+  }
+
+  return { text: trimmed }
+}
 
 interface CommandMatchSnapshot extends CommandMatchResult {
   command: string
@@ -36,6 +71,7 @@ interface CommandsState {
   searchPage: number
   searchPageSize: number
   searchQuery: string
+  searchCode: string
   searchActive: boolean
 }
 
@@ -60,6 +96,7 @@ export const useCommandsStore = defineStore('commands', {
     searchPage: 1,
     searchPageSize: 10,
     searchQuery: '',
+    searchCode: '',
     searchActive: false,
   }),
   getters: {
@@ -134,17 +171,56 @@ export const useCommandsStore = defineStore('commands', {
     },
     async uploadCommandList(lines: string[]) {
       if (this.uploading) return false
-      const normalized = lines
-        .map((line) => line.trim())
-        .filter((line, index, arr) => Boolean(line) && arr.indexOf(line) === index)
-      if (!normalized.length) {
+      const parsed = lines
+        .map((line) => parseUploadLine(line))
+        .filter((item): item is CommandUploadItem => Boolean(item?.text?.trim()))
+      if (!parsed.length) {
         this.error = '请输入至少一条指令'
         return false
       }
+      const deduped: CommandUploadItem[] = []
+      const uniqueKey = new Set<string>()
+      for (const item of parsed) {
+        const normalizedText = item.text.trim()
+        const normalizedCode = item.code?.trim()
+        if (!normalizedText) continue
+        const key = `${normalizedCode ?? ''}::${normalizedText}`
+        if (uniqueKey.has(key)) continue
+        deduped.push({
+          text: normalizedText,
+          code: normalizedCode || undefined,
+        })
+        uniqueKey.add(key)
+      }
+      if (!deduped.length) {
+        this.error = '请输入至少一条指令'
+        return false
+      }
+
+      const seenCodes = new Set<string>()
+      for (const item of deduped) {
+        if (!item.code) continue
+        const normalizedCode = item.code.trim()
+        if (!normalizedCode) {
+          item.code = undefined
+          continue
+        }
+        if (normalizedCode.length > 64) {
+          this.error = `编号「${normalizedCode}」长度超出 64 个字符`
+          return false
+        }
+        if (seenCodes.has(normalizedCode)) {
+          this.error = `编号「${normalizedCode}」重复，请检查上传内容`
+          return false
+        }
+        seenCodes.add(normalizedCode)
+        item.code = normalizedCode
+      }
+
       this.uploading = true
       this.error = null
       try {
-        await uploadCommands({ commands: normalized })
+        await uploadCommands({ commands: deduped })
         this.page = 1
         await this.fetchCommands({ page: 1, pageSize: this.pageSize, force: true })
         return true
@@ -156,30 +232,42 @@ export const useCommandsStore = defineStore('commands', {
         this.uploading = false
       }
     },
-    async search(keyword: string, options?: { page?: number; pageSize?: number }) {
-      const normalized = keyword.trim()
-      if (!normalized) {
+    async search(keyword = '', code?: string, options?: { page?: number; pageSize?: number }) {
+      const normalizedKeyword = keyword.trim()
+      const normalizedCode = (code ?? '').trim()
+      if (!normalizedKeyword && !normalizedCode) {
         this.clearSearchResults()
         this.error = null
         return
       }
-      const nextPage = options?.page ?? (normalized === this.searchQuery ? this.searchPage : 1)
+      const sameKeyword = normalizedKeyword === this.searchQuery
+      const sameCode = normalizedCode === this.searchCode
+      const nextPage = options?.page ?? (sameKeyword && sameCode ? this.searchPage : 1)
       const nextPageSize = options?.pageSize ?? this.searchPageSize
       this.searching = true
       this.error = null
       try {
-        const payload = await searchCommands(normalized, nextPage, nextPageSize)
+        const payload = await searchCommands(
+          {
+            keyword: normalizedKeyword || undefined,
+            code: normalizedCode || undefined,
+          },
+          nextPage,
+          nextPageSize,
+        )
         this.searchResults = payload.items
         this.searchTotal = payload.total
         this.searchPage = payload.page
         this.searchPageSize = payload.pageSize
-        this.searchQuery = normalized
+        this.searchQuery = normalizedKeyword
+        this.searchCode = normalizedCode
         this.searchActive = true
       } catch (error) {
         console.error('[useCommandsStore] search failed', error)
         this.error = '搜索指令失败'
         this.searchResults = []
         this.searchTotal = 0
+        this.searchCode = ''
         this.searchActive = false
       } finally {
         this.searching = false
@@ -187,29 +275,31 @@ export const useCommandsStore = defineStore('commands', {
     },
     async changeSearchPage(page: number) {
       if (!this.searchActive || page === this.searchPage) return
-      await this.search(this.searchQuery, { page, pageSize: this.searchPageSize })
+      await this.search(this.searchQuery, this.searchCode, { page, pageSize: this.searchPageSize })
     },
     async changeSearchPageSize(size: number) {
       if (!this.searchActive || size === this.searchPageSize) return
-      await this.search(this.searchQuery, { page: 1, pageSize: size })
+      await this.search(this.searchQuery, this.searchCode, { page: 1, pageSize: size })
     },
     clearSearchResults() {
       this.searchResults = []
       this.searchTotal = 0
       this.searchPage = 1
       this.searchQuery = ''
+      this.searchCode = ''
       this.searchActive = false
     },
-    async updateCommandText(commandId: number, text: string) {
+    async updateCommand(commandId: number, payload: { text: string; code?: string | null }) {
       try {
-        await updateCommand(commandId, text)
-        const target = this.commands.find((item) => item.id === commandId)
-        if (target) {
-          target.text = text
-        }
-        this.searchResults = this.searchResults.map((item) => (item.id === commandId ? { ...item, text } : item))
+        await updateCommandRequest(commandId, payload)
+        const updateLocalList = (list: CommandItem[]) =>
+          list.map((item) =>
+            item.id === commandId ? { ...item, text: payload.text, code: payload.code ?? null } : item,
+          )
+        this.commands = updateLocalList(this.commands)
+        this.searchResults = updateLocalList(this.searchResults)
       } catch (error) {
-        console.error('[useCommandsStore] updateCommandText failed', error)
+        console.error('[useCommandsStore] updateCommand failed', error)
         throw new Error('更新指令失败')
       }
     },
@@ -236,7 +326,7 @@ export const useCommandsStore = defineStore('commands', {
         if (this.searchActive && this.searchQuery) {
           const nextPage =
             this.searchResults.length === 0 && this.searchPage > 1 ? this.searchPage - 1 : this.searchPage
-          await this.search(this.searchQuery, { page: nextPage, pageSize: this.searchPageSize })
+          await this.search(this.searchQuery, this.searchCode, { page: nextPage, pageSize: this.searchPageSize })
         }
       } catch (error) {
         console.error('[useCommandsStore] removeCommand failed', error)

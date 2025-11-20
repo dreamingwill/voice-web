@@ -10,11 +10,13 @@ import type {
   CommandItemResponse,
   CommandStatus,
   CommandStatusUpdateRequest,
+  CommandUpdateRequest,
 } from '@/types/commands'
 
 function normalizeItem(item: CommandItemResponse): CommandItem {
   return {
     id: item.id,
+    code: item.code ?? null,
     text: item.text,
     createdAt: item.created_at,
     status: item.status ?? 'enabled',
@@ -58,10 +60,15 @@ export async function toggleCommandMatching({
   return normalizeList(response.data)
 }
 
-export async function searchCommands(query: string, page?: number, pageSize?: number): Promise<CommandSearchPayload> {
+export async function searchCommands(
+  filters: { keyword?: string; code?: string },
+  page?: number,
+  pageSize?: number,
+): Promise<CommandSearchPayload> {
   const response = await api.get<CommandSearchResponse>('api/commands/search', {
     params: {
-      q: query,
+      q: filters.keyword,
+      code: filters.code,
       page,
       page_size: pageSize,
     },
@@ -75,8 +82,8 @@ export async function searchCommands(query: string, page?: number, pageSize?: nu
   }
 }
 
-export async function updateCommand(commandId: number, text: string): Promise<void> {
-  await api.put(`api/commands/${commandId}`, { text })
+export async function updateCommand(commandId: number, payload: CommandUpdateRequest): Promise<void> {
+  await api.put(`api/commands/${commandId}`, payload)
 }
 
 export async function deleteCommand(commandId: number): Promise<void> {

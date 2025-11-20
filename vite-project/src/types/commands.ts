@@ -2,6 +2,7 @@ export type CommandStatus = 'enabled' | 'disabled'
 
 export interface CommandItem {
   id: number
+  code?: string | null
   text: string
   createdAt: string
   status: CommandStatus
@@ -9,6 +10,7 @@ export interface CommandItem {
 
 export interface CommandItemResponse {
   id: number
+  code?: string | null
   text: string
   created_at: string
   status?: CommandStatus
@@ -49,7 +51,12 @@ export interface CommandSearchPayload {
 }
 
 export interface CommandUploadRequest {
-  commands: string[]
+  commands: CommandUploadItem[]
+}
+
+export interface CommandUploadItem {
+  text: string
+  code?: string | null
 }
 
 export interface CommandToggleRequest {
@@ -59,6 +66,11 @@ export interface CommandToggleRequest {
 
 export interface CommandStatusUpdateRequest {
   status: CommandStatus
+}
+
+export interface CommandUpdateRequest {
+  text: string
+  code?: string | null
 }
 
 export interface CommandMatchResult {

@@ -30,7 +30,16 @@
             placeholder="输入关键词搜索"
             clearable
             class="w-60"
-            @clear="clearSearch"
+            @clear="handleSearch"
+            @keyup.enter.native="handleSearch"
+          />
+          <el-input
+            v-model="searchCode"
+            placeholder="输入指令编号"
+            clearable
+            class="w-48"
+            maxlength="64"
+            @clear="handleSearch"
             @keyup.enter.native="handleSearch"
           />
           <el-button type="primary" :loading="searching" @click="handleSearch">查询</el-button>
@@ -46,13 +55,26 @@
         class="flex flex-wrap items-center justify-between gap-2 rounded border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-600"
       >
         <span>
-          搜索关键词「{{ commandsStore.searchQuery }}」，共 {{ commandsStore.searchTotal }} 条匹配结果
+          搜索
+          <template v-if="commandsStore.searchQuery">
+            关键词「{{ commandsStore.searchQuery }}」
+          </template>
+          <template v-if="commandsStore.searchCode">
+            <template v-if="commandsStore.searchQuery"> · </template>
+            编号「{{ commandsStore.searchCode }}」
+          </template>
+          ，共 {{ commandsStore.searchTotal }} 条匹配结果
         </span>
         <span class="text-[11px] text-slate-400">每页最多显示 200 条，可继续翻页查看更多</span>
       </div>
 
       <el-table :data="displayedCommands" :loading="loading" border style="width: 100%">
         <el-table-column type="index" width="60" label="#" />
+        <el-table-column prop="code" label="编号" width="160" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.code || '—' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="text" label="指令内容" min-width="240" show-overflow-tooltip />
         <el-table-column prop="createdAt" label="创建时间" width="180">
           <template #default="{ row }">
@@ -130,14 +152,24 @@
     </section>
 
     <el-dialog v-model="isEditVisible" title="编辑指令" width="min(420px, 92vw)">
-      <el-input
-        v-model="editText"
-        type="textarea"
-        :rows="4"
-        maxlength="200"
-        show-word-limit
-        placeholder="请输入新的指令内容"
-      />
+      <div class="space-y-3">
+        <el-input
+          v-model="editCode"
+          maxlength="64"
+          show-word-limit
+          placeholder="输入指令编号（可选，需保持唯一）"
+          clearable
+        />
+        <el-input
+          v-model="editText"
+          type="textarea"
+          :rows="4"
+          maxlength="200"
+          show-word-limit
+          placeholder="请输入新的指令内容"
+        />
+        <p class="text-xs text-slate-400">编号可留空，若填写需保持唯一。</p>
+      </div>
       <template #footer>
         <div class="flex justify-end gap-2">
           <el-button @click="isEditVisible = false">取消</el-button>
@@ -149,12 +181,15 @@
     </el-dialog>
 
     <el-dialog v-model="isUploadVisible" title="批量上传指令" width="min(520px, 92vw)">
-      <p class="text-xs text-slate-500 mb-2">每行一条指令，上传后将自动刷新识别缓存。</p>
+      <p class="text-xs text-slate-500">每行一条指令，上传后将自动刷新识别缓存。</p>
+      <p class="text-xs text-slate-400 mb-2">
+        支持“编号,指令内容”或使用 Tab 分隔，也可仅粘贴指令内容。
+      </p>
       <el-input
         v-model="uploadText"
         type="textarea"
         :rows="8"
-        placeholder="示例：&#10;站综合信息检查一分钟准备&#10;中央指挥部确认完毕"
+        placeholder="示例：&#10;ZX-001,站综合信息检查一分钟准备&#10;ZX-002,中央指挥部确认完毕"
       />
       <template #footer>
         <div class="flex justify-end gap-2">
@@ -177,9 +212,11 @@ import type { CommandItem, CommandStatus } from '@/types/commands'
 const commandsStore = useCommandsStore()
 const uploadText = ref('')
 const searchKeyword = ref('')
+const searchCode = ref('')
 const isEditVisible = ref(false)
 const isUploadVisible = ref(false)
 const editText = ref('')
+const editCode = ref('')
 const editSubmitting = ref(false)
 const editingTarget = ref<CommandItem | null>(null)
 const togglingCommandId = ref<number | null>(null)
@@ -216,15 +253,18 @@ function closeUploadDialog() {
 }
 
 async function handleSearch() {
-  if (!searchKeyword.value.trim()) {
+  const keyword = searchKeyword.value.trim()
+  const code = searchCode.value.trim()
+  if (!keyword && !code) {
     clearSearch()
     return
   }
-  await commandsStore.search(searchKeyword.value)
+  await commandsStore.search(keyword, code)
 }
 
 function clearSearch() {
   searchKeyword.value = ''
+  searchCode.value = ''
   commandsStore.clearSearchResults()
 }
 
@@ -239,19 +279,37 @@ async function handleSearchPageSizeChange(size: number) {
 function openEdit(command: CommandItem) {
   editingTarget.value = command
   editText.value = command.text
+  editCode.value = command.code ?? ''
   isEditVisible.value = true
 }
 
 async function submitEdit() {
   if (!editingTarget.value) return
   const nextText = editText.value.trim()
+  const nextCode = editCode.value.trim()
   if (!nextText) {
     ElMessage.warning('请输入新的指令内容')
     return
   }
+  if (nextCode.length > 64) {
+    ElMessage.warning('编号长度不能超过 64 个字符')
+    return
+  }
+  if (nextCode) {
+    const hasDuplicate =
+      commandsStore.commands.some((item) => item.code === nextCode && item.id !== editingTarget.value?.id) ||
+      commandsStore.searchResults.some((item) => item.code === nextCode && item.id !== editingTarget.value?.id)
+    if (hasDuplicate) {
+      ElMessage.warning('编号已存在，请重新输入')
+      return
+    }
+  }
   editSubmitting.value = true
   try {
-    await commandsStore.updateCommandText(editingTarget.value.id, nextText)
+    await commandsStore.updateCommand(editingTarget.value.id, {
+      text: nextText,
+      code: nextCode || null,
+    })
     ElMessage.success('指令已更新')
     isEditVisible.value = false
   } catch (error) {
