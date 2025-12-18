@@ -77,4 +77,8 @@ export interface CommandMatchResult {
   matched: boolean
   command?: string
   score?: number
+  code?: string
+  command_id?: number
+  blocked?: boolean
+  block_reason?: string
 }

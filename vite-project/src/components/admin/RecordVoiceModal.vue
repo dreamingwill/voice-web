@@ -19,9 +19,9 @@
       <div class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded p-3 space-y-1">
         <p class="font-medium text-slate-700">可参考以下示例句式：</p>
         <ul class="list-disc pl-5 space-y-1">
-          <li>“你好，我的名字是郑睿豪。”</li>
-          <li>“今天的天气真不错，适合外出散步。”</li>
-          <li>“请给我播放一首轻松的音乐。”</li>
+          <li>“各单位注意，五分钟准备。”</li>
+          <li>“各号注意，下面进入基地程序。”</li>
+          <li>“各号注意，第二次综合检查。”</li>
         </ul>
       </div>
       <el-radio-group

@@ -5,6 +5,7 @@ import { useSpeakerStore } from '@/stores/useSpeaker'
 import { useSystemSettingsStore } from '@/stores/useSystemSettings'
 import { useCommandsStore } from '@/stores/useCommands'
 import { useAudioEnhancementStore } from '@/stores/useAudioEnhancement'
+import { ElMessage } from 'element-plus'
 import type { AudioEnhancementPayload, SessionEnhancementState } from '@/types/audioEnhancement'
 import type {
   StructuredEvent,
@@ -460,6 +461,18 @@ export function createWsService(url: string) {
         segmentId: message.segment_id,
         timestamp: new Date().toISOString(),
       })
+      // Show warning if matched but blocked due to unknown speaker
+      if (
+        message.speaker === 'unknown' &&
+        message.command_match.blocked &&
+        message.command_match.block_reason === 'unknown_speaker'
+      ) {
+        ElMessage({
+          type: 'warning',
+          showClose: true,
+          message: `命中指令「${message.command_match.command}」，但当前说话人为“未知说话人”，已阻止执行。`,
+        })
+      }
     }
   })
   service.onSpeaker((speaker) => {
