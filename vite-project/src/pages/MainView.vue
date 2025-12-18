@@ -39,10 +39,12 @@
               size="large"
               :loading="isAudioLoading"
               @click="toggleRecording"
+              :class="isVisitor ? 'px-6 py-3 text-base sm:px-8 sm:py-4 sm:text-lg shadow-lg ring-2 ring-primary/30' : ''"
             >
               {{ audioStore.isRecording ? '停止采集' : '开始采集' }}
             </el-button>
             <el-button
+              v-if="userStore.isAuthenticated"
               size="large"
               :disabled="!audioStore.isRecording"
               @click="toggleMute"
@@ -52,12 +54,12 @@
           </div>
           <p class="text-sm text-slate-600 space-y-0.5">
             <span class="block">当前状态：{{ audioStatusText }}</span>
-            <span class="block text-xs text-slate-800">
+            <!-- <span class="block text-xs text-slate-800">
               说话人识别：{{ speakerStatusSummary }}
-            </span>
+            </span> -->
           </p>
         </div>
-        <section class="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+        <section v-if="userStore.isAuthenticated" class="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
           <header class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p class="text-sm font-semibold text-slate-800">音频增强</p>
@@ -192,6 +194,7 @@ import { useSpeakerStore } from '@/stores/useSpeaker'
 import { useAudioStore } from '@/stores/useAudio'
 import { useSystemSettingsStore } from '@/stores/useSystemSettings'
 import { useAudioEnhancementStore } from '@/stores/useAudioEnhancement'
+import { useUserStore } from '@/stores/useUser'
 import { startRealtimeStreaming, stopRealtimeStreaming } from '@/services/realtimeClient'
 import AlertBanner from '@/components/alerts/AlertBanner.vue'
 import CommandMatchCard from '@/components/cards/CommandMatchCard.vue'
@@ -203,6 +206,8 @@ const speakerStore = useSpeakerStore()
 const audioStore = useAudioStore()
 const systemSettingsStore = useSystemSettingsStore()
 const audioEnhancementStore = useAudioEnhancementStore()
+const userStore = useUserStore()
+const isVisitor = computed(() => !userStore.isAuthenticated)
 
 const transcripts = computed(() => asrStore.transcripts)
 const orderedTranscripts = computed(() => [...transcripts.value].reverse())
@@ -341,6 +346,15 @@ async function toggleMute() {
 }
 
 async function handleSpeakerToggle(value: boolean) {
-  await systemSettingsStore.toggleSpeakerRecognition(Boolean(value))
+  const next = Boolean(value)
+  if (userStore.isAuthenticated) {
+    // Admin: persist as global default via backend
+    await systemSettingsStore.toggleSpeakerRecognition(next)
+  } else {
+    // Visitor: set local preference for this session only
+    systemSettingsStore.enableSpeakerRecognition = next
+    systemSettingsStore.setSessionSpeakerEnabled(null)
+    ElMessage({ type: 'success', message: `已${next ? '启用' : '关闭'}说话人识别（仅当前会话生效）`, showClose: true })
+  }
 }
 </script>

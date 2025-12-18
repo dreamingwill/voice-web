@@ -44,9 +44,9 @@
             退出登录
           </el-button>
         </template>
-        <!-- <template v-else>
-          <el-button size="small" @click="goLogin">登录</el-button>
-        </template> -->
+        <template v-else>
+          <el-button size="small" @click="goLogin">管理员登录</el-button>
+        </template>
       </div>
     </div>
   </header>
@@ -62,10 +62,14 @@ const route = useRoute()
 
 function logout() {
   userStore.logout()
-  router.push({ name: 'login' })
+  router.push({ name: 'home' })
 }
 
 function linkClass(path: string) {
   return route.path === path ? 'font-semibold underline' : 'text-emerald-100'
+}
+
+function goLogin() {
+  router.push({ name: 'login' })
 }
 </script>

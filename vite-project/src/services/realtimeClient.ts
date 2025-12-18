@@ -3,6 +3,7 @@ import { createWsService } from '@/services/wsService'
 import { useConnectionStore } from '@/stores/useConnection'
 import { useUserStore } from '@/stores/useUser'
 import { useAudioEnhancementStore } from '@/stores/useAudioEnhancement'
+import { useSystemSettingsStore } from '@/stores/useSystemSettings'
 
 let wsInstance: ReturnType<typeof createWsService> | null = null
 let frameUnsubscribe: (() => void) | null = null
@@ -40,6 +41,7 @@ export function startRealtimeStreaming() {
   const connectionStore = useConnectionStore()
   const userStore = useUserStore()
   const audioEnhancementStore = useAudioEnhancementStore()
+  const systemSettingsStore = useSystemSettingsStore()
 
   if (!connectionStore.sessionId) {
     connectionStore.setSession(makeSessionId())
@@ -56,6 +58,7 @@ export function startRealtimeStreaming() {
       : undefined,
     locale: 'zh-CN',
     enhancement: audioEnhancementStore.enhancementPayload,
+    speakerRecognitionEnabled: Boolean(systemSettingsStore.enableSpeakerRecognition),
   })
 
   if (!frameUnsubscribe) {

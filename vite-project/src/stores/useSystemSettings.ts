@@ -28,11 +28,14 @@ export const useSystemSettingsStore = defineStore('systemSettings', {
       try {
         const settings = await fetchSystemSettings()
         this.enableSpeakerRecognition = Boolean(settings.enable_speaker_recognition)
-        this.initialized = true
       } catch (error) {
         console.error('[useSystemSettingsStore] loadSettings failed', error)
         this.error = '无法获取系统设置'
+        // Allow visitor mode to operate with local defaults
+        // Mark initialized so UI controls are enabled for session-level preferences
+        // Keep current enableSpeakerRecognition default value
       } finally {
+        this.initialized = true
         this.loading = false
       }
     },

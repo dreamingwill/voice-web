@@ -37,6 +37,7 @@ interface ConnectOptions {
   }
   locale?: string
   enhancement?: AudioEnhancementPayload
+  speakerRecognitionEnabled?: boolean
 }
 
 const DEFAULT_OPTIONS: Required<Pick<WSServiceOptions, 'heartbeatInterval' | 'reconnectDelay' | 'maxReconnectDelay'>> = {
@@ -64,6 +65,7 @@ export class WSService {
   private operatorInfo: ConnectOptions['operator'] = undefined
   private locale: string | null = null
   private enhancementConfig: AudioEnhancementPayload | null = null
+  private speakerRecognitionEnabled: boolean | null = null
 
   private readonly partialListeners = new Set<Listener<PartialTranscriptMessage>>()
   private readonly finalListeners = new Set<Listener<FinalTranscriptMessage>>()
@@ -95,6 +97,8 @@ export class WSService {
     this.operatorInfo = options?.operator
     this.locale = options?.locale ?? null
     this.enhancementConfig = options?.enhancement ?? null
+    this.speakerRecognitionEnabled =
+      typeof options?.speakerRecognitionEnabled === 'boolean' ? options?.speakerRecognitionEnabled : null
     this.readyState = 'connecting'
     this.manualClose = false
     this.shouldReconnect = true
@@ -126,6 +130,7 @@ export class WSService {
             operator: this.operatorInfo ?? undefined,
             locale: this.locale ?? 'zh-CN',
             enhancement: this.enhancementConfig ?? undefined,
+            speakerRecognitionEnabled: this.speakerRecognitionEnabled ?? undefined,
           },
         })
       }
