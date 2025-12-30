@@ -224,13 +224,13 @@ const audioStatusText = computed(() => {
 })
 const speakerToggleLoading = computed(() => systemSettingsStore.loading || systemSettingsStore.updating)
 const speakerToggleDisabled = computed(() => !systemSettingsStore.initialized || speakerToggleLoading.value)
-const speakerStatusSummary = computed(() => {
-  const globalEnabled = systemSettingsStore.enableSpeakerRecognition
-  const sessionState = systemSettingsStore.sessionSpeakerEnabled
-  const globalText = globalEnabled ? '已开启（新建会话生效）' : '已关闭（新建会话生效）'
-  if (sessionState == null) return `${globalText} · 当前会话状态未知`
-  return `${globalText} · 当前会话${sessionState ? '已启用' : '已禁用'}`
-})
+// const speakerStatusSummary = computed(() => {
+//   const globalEnabled = systemSettingsStore.enableSpeakerRecognition
+//   const sessionState = systemSettingsStore.sessionSpeakerEnabled
+//   const globalText = globalEnabled ? '已开启（新建会话生效）' : '已关闭（新建会话生效）'
+//   if (sessionState == null) return `${globalText} · 当前会话状态未知`
+//   return `${globalText} · 当前会话${sessionState ? '已启用' : '已禁用'}`
+// })
 
 const noiseModeOptions = computed(() => audioEnhancementStore.noiseModes)
 const selectedNoiseMode = computed({
