@@ -168,7 +168,7 @@
           show-word-limit
           placeholder="请输入新的指令内容"
         />
-        <p class="text-xs text-slate-400">编号可留空，若填写需保持唯一。</p>
+        <p class="text-xs text-slate-400">编号可留空。</p>
       </div>
       <template #footer>
         <div class="flex justify-end gap-2">

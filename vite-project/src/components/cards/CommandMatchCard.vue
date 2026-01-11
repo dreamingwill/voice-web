@@ -55,6 +55,8 @@
         class="rounded-md border border-emerald-200 bg-emerald-50/80 p-3 space-y-1"
       >
         <p class="text-xs text-emerald-700">最新命中 · {{ formatTime(latestMatch.timestamp) }}</p>
+        <p class="text-xs text-emerald-700">转发状态：{{ forwardStatusLabel }}</p>
+        <p v-if="latestMatchCode" class="text-xs text-emerald-700">编号 {{ latestMatchCode }}</p>
         <p class="text-base font-semibold text-emerald-900 truncate" :title="latestMatch.command">
           {{ latestMatch.command }}
         </p>
@@ -94,6 +96,18 @@ const localThreshold = ref(commandsStore.matchThreshold)
 
 const thresholdLabel = computed(() => commandsStore.matchThreshold.toFixed(2))
 const latestMatch = computed(() => commandsStore.lastMatch)
+const latestMatchCode = computed(() => {
+  const match = latestMatch.value
+  if (!match) return ''
+  if (match.code?.trim()) return match.code.trim()
+  if (typeof match.command_id === 'number') return String(match.command_id)
+  return ''
+})
+const forwardStatusLabel = computed(() => {
+  const match = latestMatch.value
+  if (!match) return '未知'
+  return match.blocked ? '已阻止' : '已转发'
+})
 const isAuthenticated = computed(() => userStore.isAuthenticated)
 const saving = computed(() => commandsStore.saving)
 
