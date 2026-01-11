@@ -295,15 +295,15 @@ async function submitEdit() {
     ElMessage.warning('编号长度不能超过 64 个字符')
     return
   }
-  if (nextCode) {
-    const hasDuplicate =
-      commandsStore.commands.some((item) => item.code === nextCode && item.id !== editingTarget.value?.id) ||
-      commandsStore.searchResults.some((item) => item.code === nextCode && item.id !== editingTarget.value?.id)
-    if (hasDuplicate) {
-      ElMessage.warning('编号已存在，请重新输入')
-      return
-    }
-  }
+  // if (nextCode) {
+  //   const hasDuplicate =
+  //     commandsStore.commands.some((item) => item.code === nextCode && item.id !== editingTarget.value?.id) ||
+  //     commandsStore.searchResults.some((item) => item.code === nextCode && item.id !== editingTarget.value?.id)
+  //   if (hasDuplicate) {
+  //     ElMessage.warning('编号已存在，请重新输入')
+  //     return
+  //   }
+  // }
   editSubmitting.value = true
   try {
     await commandsStore.updateCommand(editingTarget.value.id, {

@@ -197,7 +197,7 @@ export const useCommandsStore = defineStore('commands', {
         return false
       }
 
-      const seenCodes = new Set<string>()
+      // const seenCodes = new Set<string>()
       for (const item of deduped) {
         if (!item.code) continue
         const normalizedCode = item.code.trim()
@@ -209,11 +209,11 @@ export const useCommandsStore = defineStore('commands', {
           this.error = `编号「${normalizedCode}」长度超出 64 个字符`
           return false
         }
-        if (seenCodes.has(normalizedCode)) {
-          this.error = `编号「${normalizedCode}」重复，请检查上传内容`
-          return false
-        }
-        seenCodes.add(normalizedCode)
+        // if (seenCodes.has(normalizedCode)) {
+        //   this.error = `编号「${normalizedCode}」重复，请检查上传内容`
+        //   return false
+        // }
+        // seenCodes.add(normalizedCode)
         item.code = normalizedCode
       }
 
