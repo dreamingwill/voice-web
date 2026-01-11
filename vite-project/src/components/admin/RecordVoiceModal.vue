@@ -14,15 +14,21 @@
 
     <section class="space-y-4">
       <p class="text-sm text-slate-600 leading-relaxed">
-        请准备三段约 3 秒的语音样本，可选择现场录制或上传已存在的音频文件，系统会自动转换并上传至声纹库。
+        请在安静环境中，连续朗读下面这段文字。朗读时保持自然语速，
+        不需要刻意放慢或提高音量，像日常交流一样即可。
+        全程建议控制在十五到三十秒。
       </p>
       <div class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded p-3 space-y-1">
-        <p class="font-medium text-slate-700">可参考以下示例句式：</p>
-        <ul class="list-disc pl-5 space-y-1">
-          <li>“各单位注意，五分钟准备。”</li>
-          <li>“各号注意，下面进入基地程序。”</li>
-          <li>“各号注意，第二次综合检查。”</li>
-        </ul>
+        <p class="font-medium text-slate-700">朗读内容：</p>
+          <p>
+            各单位注意，现在开始进行系统例行检查。
+            当前环境运行正常，请保持通信畅通。
+            接下来，我将对设备状态进行简单说明。
+            今天的天气比较平稳，适合开展日常任务，
+            如果过程中出现异常情况，请及时上报处理。
+            检查完成后，系统将进入待命状态，
+            请继续保持关注。
+          </p>
       </div>
       <el-radio-group
         v-model="mode"
@@ -66,7 +72,7 @@
                 ? `准备录制（${countdownSeconds}）`
                 : isRecording
                   ? '录制中…'
-                  : '录制样本'
+                  : '开始录制'
             }}
           </el-button>
           <el-button
@@ -85,7 +91,7 @@
           </template>
           <template v-else-if="isRecording">
             <div class="flex items-center gap-3">
-              <span>录制中，剩余 {{ recordingTimeLeft.toFixed(1) }} 秒</span>
+              <span>录制中，已录制 {{ recordingElapsed.toFixed(1) }} 秒</span>
               <el-progress
                 class="w-40"
                 :percentage="recordingProgress"
@@ -105,8 +111,8 @@
           <p class="font-medium text-slate-700">上传要求</p>
           <ul class="list-disc pl-5 space-y-1">
             <li>支持 {{ SUPPORTED_FORMAT_LABEL }} 格式，单个文件不超过 10 MB。</li>
-            <li>每段语音建议 2-5 秒，可轻读示例句式以保持内容一致。</li>
-            <li>可上传 1-{{ MAX_SAMPLES }} 段，若需替换请关闭弹窗重新选择。</li>
+            <li>单条语音需保持在 {{ MIN_SAMPLE_DURATION }}-{{ MAX_SAMPLE_DURATION }} 秒内。</li>
+            <li>仅支持上传 1 段语音，若需替换请关闭弹窗重新选择。</li>
           </ul>
         </div>
         <div class="flex items-center gap-3">
@@ -122,7 +128,6 @@
             ref="uploadInputRef"
             type="file"
             accept="audio/*"
-            multiple
             class="hidden"
             @change="handleUploadChange"
           >
@@ -131,7 +136,7 @@
           </span>
         </div>
         <p class="text-xs text-slate-500">
-          可一次选择多段音频，系统会依次校验并上传符合要求的样本。
+          仅支持单文件上传，系统会校验时长与格式后保存样本。
         </p>
       </div>
 
@@ -226,13 +231,12 @@ const emit = defineEmits<{
 }>()
 
 const MIN_SAMPLES = 1
-const MAX_SAMPLES = 3
+const MAX_SAMPLES = 1
 const COUNTDOWN_SECONDS = 3
-const RECORDING_TARGET_MS = 3_000
-const RECORDING_AUTO_STOP_MS = 3_200
+const MAX_RECORDING_MS = 30_000
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024
-const MIN_SAMPLE_DURATION = 2
-const MAX_SAMPLE_DURATION = 5
+const MIN_SAMPLE_DURATION = 15
+const MAX_SAMPLE_DURATION = 30
 const SUPPORTED_FORMAT_LABEL = 'wav / mp3 / m4a / aac / ogg / webm'
 const ALLOWED_MIME_TYPES = [
   'audio/wav',
@@ -258,7 +262,7 @@ const completedSamples = ref<RecordedSample[]>([])
 const recordedChunks = ref<Blob[]>([])
 const countdownSeconds = ref(0)
 const recordingProgress = ref(0)
-const recordingTimeLeft = ref(0)
+const recordingElapsed = ref(0)
 const uploadInputRef = ref<HTMLInputElement | null>(null)
 class SampleValidationError extends Error {
   code: DurationErrorCode
@@ -307,7 +311,15 @@ function openFilePicker() {
 function handleUploadChange(event: Event) {
   const target = event.target as HTMLInputElement | null
   if (!target?.files?.length) return
-  void processUploadedFiles(Array.from(target.files))
+  const files = Array.from(target.files)
+  if (files.length > 1) {
+    ElMessage({
+      type: 'warning',
+      message: '仅支持上传 1 段语音，请重新选择单个文件。',
+      showClose: true,
+    })
+  }
+  void processUploadedFiles(files.slice(0, 1))
   target.value = ''
 }
 
@@ -323,7 +335,7 @@ async function processUploadedFiles(files: File[]) {
   if (completedSamples.value.length >= MAX_SAMPLES) {
     ElMessage({
       type: 'info',
-      message: `已达到最多 ${MAX_SAMPLES} 个样本，如需重新上传请关闭对话框后再次进入。`,
+      message: '已上传样本，如需替换请关闭对话框后再次进入。',
       showClose: true,
     })
     return
@@ -427,7 +439,7 @@ function clearRecordingTimers() {
     autoStopTimer = null
   }
   recordingProgress.value = 0
-  recordingTimeLeft.value = 0
+  recordingElapsed.value = 0
   recordingStartTime = 0
 }
 
@@ -511,24 +523,19 @@ function beginRecording() {
   isRecording.value = true
   errorMessage.value = null
   recordingProgress.value = 0
-  recordingTimeLeft.value = RECORDING_TARGET_MS / 1_000
+  recordingElapsed.value = 0
   recordingStartTime = performance.now()
   recordingTimer = window.setInterval(() => {
     const elapsed = performance.now() - recordingStartTime
-    recordingProgress.value = Math.min(100, (elapsed / RECORDING_TARGET_MS) * 100)
-    recordingTimeLeft.value = Math.max(0, (RECORDING_TARGET_MS - elapsed) / 1_000)
-    if (elapsed >= RECORDING_TARGET_MS && recordingTimer) {
-      clearInterval(recordingTimer)
-      recordingTimer = null
-      recordingProgress.value = 100
-    }
+    recordingElapsed.value = elapsed / 1_000
+    recordingProgress.value = Math.min(100, (elapsed / MAX_RECORDING_MS) * 100)
   }, 100)
 
   autoStopTimer = window.setTimeout(() => {
     if (isRecording.value) {
       stopRecording()
     }
-  }, RECORDING_AUTO_STOP_MS)
+  }, MAX_RECORDING_MS)
 }
 
 function stopRecording() {
