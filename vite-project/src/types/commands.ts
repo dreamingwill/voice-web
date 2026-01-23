@@ -73,6 +73,20 @@ export interface CommandUpdateRequest {
   code?: string | null
 }
 
+export interface CommandForwardRequest {
+  projectCode: string
+  operatorAccount: string
+  operatorName: string
+  createTime?: string | null
+}
+
+export interface CommandForwardResponse {
+  sent: boolean
+  projectCode: string
+  speaker: string
+  forwardedAt: string
+}
+
 export interface CommandMatchResult {
   matched: boolean
   command?: string

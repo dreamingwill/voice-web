@@ -106,6 +106,9 @@
             >
               {{ row.status === 'enabled' ? '禁用' : '启用' }}
             </el-button>
+            <el-button link type="primary" size="small" @click="openForwardDialog(row)">
+              发送
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -200,26 +203,71 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="isForwardVisible" title="发送指令" width="min(520px, 92vw)">
+      <div class="space-y-3">
+        <div class="rounded border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          <div class="font-medium text-slate-700">待发送指令</div>
+          <div class="mt-1 flex flex-wrap items-center gap-2">
+            <span class="text-slate-500">编号：</span>
+            <span>{{ forwardTarget?.code || '—' }}</span>
+            <span class="text-slate-400">|</span>
+            <span class="text-slate-500">内容：</span>
+            <span class="truncate max-w-[280px]" :title="forwardTarget?.text">
+              {{ forwardTarget?.text || '—' }}
+            </span>
+          </div>
+        </div>
+        <el-input v-model="forwardForm.projectCode" placeholder="项目编号（projectCode）" clearable maxlength="64" />
+        <el-input v-model="forwardForm.operatorAccount" placeholder="操作员账号" clearable maxlength="64" />
+        <el-input v-model="forwardForm.operatorName" placeholder="操作员姓名" clearable maxlength="64" />
+        <!-- <el-input
+          v-model="forwardForm.createTime"
+          placeholder="创建时间（createTime，可选）"
+          clearable
+        /> -->
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <el-button @click="isForwardVisible = false" :disabled="forwardSubmitting">取消</el-button>
+          <el-button type="primary" :loading="forwardSubmitting" @click="submitForward">
+            发送
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCommandsStore } from '@/stores/useCommands'
+import { useUserStore } from '@/stores/useUser'
+import { forwardCommand } from '@/services/commandService'
 import type { CommandItem, CommandStatus } from '@/types/commands'
 
 const commandsStore = useCommandsStore()
+const userStore = useUserStore()
 const uploadText = ref('')
 const searchKeyword = ref('')
 const searchCode = ref('')
 const isEditVisible = ref(false)
 const isUploadVisible = ref(false)
+const isForwardVisible = ref(false)
 const editText = ref('')
 const editCode = ref('')
 const editSubmitting = ref(false)
+const forwardSubmitting = ref(false)
 const editingTarget = ref<CommandItem | null>(null)
+const forwardTarget = ref<CommandItem | null>(null)
 const togglingCommandId = ref<number | null>(null)
+const forwardForm = reactive({
+  projectCode: '',
+  operatorAccount: '',
+  operatorName: '',
+  createTime: '',
+})
 
 const loading = computed(() => commandsStore.loading)
 const uploading = computed(() => commandsStore.uploading)
@@ -250,6 +298,58 @@ function openUploadDialog() {
 
 function closeUploadDialog() {
   isUploadVisible.value = false
+}
+
+function openForwardDialog(command: CommandItem) {
+  forwardTarget.value = command
+  forwardForm.projectCode = command.code ?? ''
+  forwardForm.operatorAccount = ''
+  forwardForm.operatorName = ''
+  forwardForm.createTime = ''
+  isForwardVisible.value = true
+}
+
+async function submitForward() {
+  if (!forwardTarget.value) return
+  const projectCode = forwardForm.projectCode.trim()
+  const operatorAccount = forwardForm.operatorAccount.trim()
+  const operatorName = forwardForm.operatorName.trim()
+  const createTime = forwardForm.createTime.trim()
+
+  if (!projectCode) {
+    ElMessage.warning('请输入项目编号')
+    return
+  }
+  if (!operatorAccount) {
+    ElMessage.warning('请输入操作员账号')
+    return
+  }
+  if (!operatorName) {
+    ElMessage.warning('请输入操作员姓名')
+    return
+  }
+
+  forwardSubmitting.value = true
+  try {
+    const response = await forwardCommand({
+      projectCode,
+      operatorAccount,
+      operatorName,
+      createTime: createTime || undefined,
+    })
+    if (response.sent) {
+      const speakerLabel = response.speaker ? `（${response.speaker}）` : ''
+      const forwardedAtLabel = response.forwardedAt ? ` · ${formatTime(response.forwardedAt)}` : ''
+      ElMessage.success(`指令已发送${speakerLabel}${forwardedAtLabel}`)
+      isForwardVisible.value = false
+    } else {
+      ElMessage.warning('指令未成功发送')
+    }
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '发送失败')
+  } finally {
+    forwardSubmitting.value = false
+  }
 }
 
 async function handleSearch() {

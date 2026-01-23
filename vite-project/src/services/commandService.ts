@@ -11,6 +11,8 @@ import type {
   CommandStatus,
   CommandStatusUpdateRequest,
   CommandUpdateRequest,
+  CommandForwardRequest,
+  CommandForwardResponse,
 } from '@/types/commands'
 
 function normalizeItem(item: CommandItemResponse): CommandItem {
@@ -94,4 +96,26 @@ export async function updateCommandStatus(commandId: number, status: CommandStat
   const body: CommandStatusUpdateRequest = { status }
   const response = await api.patch<CommandItemResponse>(`api/commands/${commandId}/status`, body)
   return normalizeItem(response.data)
+}
+
+interface CommandForwardResponseRaw {
+  sent: boolean
+  project_code: string
+  speaker: string
+  forwarded_at: string
+}
+
+export async function forwardCommand(payload: CommandForwardRequest): Promise<CommandForwardResponse> {
+  const response = await api.post<CommandForwardResponseRaw>('api/commands/forward', {
+    projectCode: payload.projectCode,
+    operatorAccount: payload.operatorAccount,
+    operatorName: payload.operatorName,
+    createTime: payload.createTime ?? undefined,
+  })
+  return {
+    sent: Boolean(response.data.sent),
+    projectCode: response.data.project_code ?? payload.projectCode,
+    speaker: response.data.speaker ?? '',
+    forwardedAt: response.data.forwarded_at ?? '',
+  }
 }
