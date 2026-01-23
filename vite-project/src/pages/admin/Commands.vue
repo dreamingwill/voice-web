@@ -243,13 +243,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCommandsStore } from '@/stores/useCommands'
-import { useUserStore } from '@/stores/useUser'
+// import { useUserStore } from '@/stores/useUser'
 import { forwardCommand } from '@/services/commandService'
 import { getCommandForwardErrorMessage } from '@/utils/commandForwardError'
 import type { CommandItem, CommandStatus } from '@/types/commands'
 
 const commandsStore = useCommandsStore()
-const userStore = useUserStore()
+// const userStore = useUserStore()
 const uploadText = ref('')
 const searchKeyword = ref('')
 const searchCode = ref('')
