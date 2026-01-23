@@ -346,7 +346,14 @@ async function submitForward() {
       ElMessage.warning('指令未成功发送')
     }
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '发送失败')
+    const detail = (error as { response?: { status?: number; data?: { detail?: string } } })?.response?.data?.detail
+    if (detail === '没有该指令') {
+      ElMessage.error('没有该指令，请确认项目编号或指令配置')
+    } else if (detail === '没有该操作员') {
+      ElMessage.error('没有该操作员，请确认账号与姓名')
+    } else {
+      ElMessage.error(error instanceof Error ? error.message : '发送失败')
+    }
   } finally {
     forwardSubmitting.value = false
   }
