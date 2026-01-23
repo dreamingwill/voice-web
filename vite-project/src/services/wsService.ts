@@ -6,11 +6,13 @@ import { useSystemSettingsStore } from '@/stores/useSystemSettings'
 import { useCommandsStore } from '@/stores/useCommands'
 import { useAudioEnhancementStore } from '@/stores/useAudioEnhancement'
 import { ElMessage } from 'element-plus'
+import { getCommandForwardErrorMessage } from '@/utils/commandForwardError'
 import type { AudioEnhancementPayload, SessionEnhancementState } from '@/types/audioEnhancement'
 import type {
   StructuredEvent,
   SpeakerState,
   WsInboundMessage,
+  CommandForwardErrorMessage,
   PartialTranscriptMessage,
   FinalTranscriptMessage,
   SimilarityCandidate,
@@ -73,6 +75,7 @@ export class WSService {
   private readonly eventListeners = new Set<Listener<StructuredEvent>>()
   private readonly metaListeners = new Set<Listener<Record<string, unknown>>>()
   private readonly errorListeners = new Set<Listener<string>>()
+  private readonly commandForwardErrorListeners = new Set<Listener<CommandForwardErrorMessage>>()
   private readonly openListeners = new Set<Listener<void>>()
   private readonly closeListeners = new Set<Listener<{ code: number; reason: string }>>()
 
@@ -213,6 +216,11 @@ export class WSService {
     return () => this.errorListeners.delete(listener)
   }
 
+  onCommandForwardError(listener: Listener<CommandForwardErrorMessage>) {
+    this.commandForwardErrorListeners.add(listener)
+    return () => this.commandForwardErrorListeners.delete(listener)
+  }
+
   onOpen(listener: Listener<void>) {
     this.openListeners.add(listener)
     return () => this.openListeners.delete(listener)
@@ -293,6 +301,9 @@ export class WSService {
         break
       case 'error':
         this.handleError(parsed.error ?? '服务器返回错误', parsed)
+        break
+      case 'command.forward.error':
+        this.commandForwardErrorListeners.forEach((listener) => listener(parsed))
         break
       case 'control.pong':
         this.handleControlPong(parsed)
@@ -402,6 +413,23 @@ export function createWsService(url: string) {
 
   service.onError((message) => {
     console.error('[createWsService] error', message)
+    const forwardError = getCommandForwardErrorMessage(message)
+    if (forwardError) {
+      ElMessage.error(forwardError)
+    }
+  })
+
+  service.onCommandForwardError((message) => {
+    const detail = message.error ?? ''
+    const forwardError = getCommandForwardErrorMessage(detail) ?? '发送失败'
+    ElMessage.error(forwardError)
+    if (commandsStore.lastMatch) {
+      commandsStore.setLastMatch({
+        ...commandsStore.lastMatch,
+        forwardStatus: 'failed',
+        forwardError: detail || undefined,
+      })
+    }
   })
 
   service.onPartial((message) => {

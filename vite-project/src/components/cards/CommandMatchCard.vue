@@ -86,6 +86,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useCommandsStore } from '@/stores/useCommands'
+import { getCommandForwardErrorMessage } from '@/utils/commandForwardError'
 import { useUserStore } from '@/stores/useUser'
 
 const commandsStore = useCommandsStore()
@@ -106,6 +107,10 @@ const latestMatchCode = computed(() => {
 const forwardStatusLabel = computed(() => {
   const match = latestMatch.value
   if (!match) return '未知'
+  if (match.forwardStatus === 'failed') {
+    const mapped = getCommandForwardErrorMessage(match.forwardError ?? '')
+    return mapped ?? '发送失败'
+  }
   return match.blocked ? '已阻止' : '已转发'
 })
 const isAuthenticated = computed(() => userStore.isAuthenticated)

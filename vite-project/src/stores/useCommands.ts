@@ -49,6 +49,8 @@ interface CommandMatchSnapshot extends CommandMatchResult {
   command: string
   segmentId: number
   timestamp: string
+  forwardStatus?: 'success' | 'failed'
+  forwardError?: string
 }
 
 interface CommandsState {

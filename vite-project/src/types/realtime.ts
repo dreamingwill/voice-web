@@ -37,6 +37,13 @@ export interface ControlPongMessage {
   time?: number
 }
 
+export interface CommandForwardErrorMessage {
+  type: 'command.forward.error'
+  code?: string
+  speaker?: string
+  error?: string
+}
+
 export type WsInboundMessage =
   | PartialTranscriptMessage
   | FinalTranscriptMessage
@@ -44,6 +51,7 @@ export type WsInboundMessage =
   | { type: 'event'; data: StructuredEvent }
   | { type: 'meta'; data: Record<string, unknown> }
   | { type: 'error'; error: string; code?: string | number }
+  | CommandForwardErrorMessage
   | DoneMessage
   | ControlPongMessage
 
