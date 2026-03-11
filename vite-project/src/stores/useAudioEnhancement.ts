@@ -43,10 +43,11 @@ export const useAudioEnhancementStore = defineStore('audioEnhancement', {
       },
     dereverbOption: (state) => state.options?.dereverb,
     enhancementPayload(state): AudioEnhancementPayload {
+      const isDereverbMode = state.selectedNoiseMode === 'dereverb'
       const base: AudioEnhancementPayload = {
-        noiseMode: state.selectedNoiseMode,
+        noiseMode: isDereverbMode ? 'none' : state.selectedNoiseMode,
         noiseStrength: state.noiseStrength,
-        enableDereverb: state.enableDereverb,
+        enableDereverb: isDereverbMode ? true : state.enableDereverb,
       }
       const params = state.options?.dereverb?.parameters
       if (params?.delay != null) {

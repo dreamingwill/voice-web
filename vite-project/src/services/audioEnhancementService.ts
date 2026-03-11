@@ -42,7 +42,7 @@ function normalizeNoiseStrength(config?: Partial<NoiseStrengthConfig>): NoiseStr
 function normalizeDereverb(config?: Partial<DereverbOption> & { parameters?: Record<string, number> }): DereverbOption | undefined {
   if (!config) return undefined
   return {
-    label: config.label ?? '启用 Dereverb',
+    label: config.label ?? '混响消除',
     description: config.description,
     defaultEnabled: Boolean(config.defaultEnabled),
     parameters: config.parameters,
@@ -60,6 +60,15 @@ export async function fetchAudioEnhancementOptions(): Promise<AudioEnhancementOp
       id: 'dns',
       label: '深度噪声抑制（DNS）',
       description: '基于深度学习的噪声抑制算法',
+      recommended: false,
+    })
+  }
+  // 将混响消除（Dereverb）注入为统一的噪声模式选项，与其他算法并列显示
+  if (dereverb && !noiseModes.some((m) => m.id === 'dereverb')) {
+    noiseModes.push({
+      id: 'dereverb',
+      label: '混响消除',
+      description: dereverb.description,
       recommended: false,
     })
   }
