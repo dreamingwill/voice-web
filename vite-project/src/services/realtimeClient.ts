@@ -36,7 +36,7 @@ function bufferFromFrame(frame: Int16Array): ArrayBuffer {
   return frame.slice().buffer
 }
 
-export function startRealtimeStreaming() {
+export function startRealtimeStreaming(saveAudio?: boolean) {
   const ws = ensureWsInstance()
   const connectionStore = useConnectionStore()
   const userStore = useUserStore()
@@ -59,6 +59,7 @@ export function startRealtimeStreaming() {
     locale: 'zh-CN',
     enhancement: audioEnhancementStore.enhancementPayload,
     speakerRecognitionEnabled: Boolean(systemSettingsStore.enableSpeakerRecognition),
+    saveAudio,
   })
 
   if (!frameUnsubscribe) {

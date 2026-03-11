@@ -40,6 +40,7 @@ interface ConnectOptions {
   locale?: string
   enhancement?: AudioEnhancementPayload
   speakerRecognitionEnabled?: boolean
+  saveAudio?: boolean
 }
 
 const DEFAULT_OPTIONS: Required<Pick<WSServiceOptions, 'heartbeatInterval' | 'reconnectDelay' | 'maxReconnectDelay'>> = {
@@ -68,6 +69,7 @@ export class WSService {
   private locale: string | null = null
   private enhancementConfig: AudioEnhancementPayload | null = null
   private speakerRecognitionEnabled: boolean | null = null
+  private saveAudio: boolean | null = null
 
   private readonly partialListeners = new Set<Listener<PartialTranscriptMessage>>()
   private readonly finalListeners = new Set<Listener<FinalTranscriptMessage>>()
@@ -102,6 +104,7 @@ export class WSService {
     this.enhancementConfig = options?.enhancement ?? null
     this.speakerRecognitionEnabled =
       typeof options?.speakerRecognitionEnabled === 'boolean' ? options?.speakerRecognitionEnabled : null
+    this.saveAudio = typeof options?.saveAudio === 'boolean' ? options.saveAudio : null
     this.readyState = 'connecting'
     this.manualClose = false
     this.shouldReconnect = true
@@ -134,6 +137,7 @@ export class WSService {
             locale: this.locale ?? 'zh-CN',
             enhancement: this.enhancementConfig ?? undefined,
             speakerRecognitionEnabled: this.speakerRecognitionEnabled ?? undefined,
+            saveAudio: this.saveAudio ?? undefined,
           },
         })
       }

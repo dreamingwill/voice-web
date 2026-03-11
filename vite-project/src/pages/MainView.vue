@@ -31,6 +31,14 @@
                 </el-tooltip>
               </div>
             </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-800">保存录音</span>
+              <el-switch
+                v-model="saveAudio"
+                :disabled="audioStore.isRecording"
+                active-color="#16a34a"
+              />
+            </div>
             <el-button size="small" @click="asrStore.clear">清空</el-button>
           </div>
         </header>
@@ -252,6 +260,7 @@ const transcripts = computed(() => asrStore.transcripts);
 const orderedTranscripts = computed(() => [...transcripts.value].reverse());
 const transcriptContainer = ref<HTMLElement | null>(null);
 const isAudioLoading = ref(false);
+const saveAudio = ref(false);
 const audioStatusText = computed(() => {
   if (!audioStore.isRecording) {
     return "麦克风已停止";
@@ -362,7 +371,7 @@ async function toggleRecording() {
   } else {
     connectionStore.setStatus("connecting");
     asrStore.clear();
-    startRealtimeStreaming();
+    startRealtimeStreaming(saveAudio.value);
     const ok = await audioStore.start();
     if (!ok) {
       stopRealtimeStreaming(false);
