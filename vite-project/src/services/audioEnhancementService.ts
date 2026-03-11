@@ -54,6 +54,15 @@ export async function fetchAudioEnhancementOptions(): Promise<AudioEnhancementOp
   const noiseModes = normalizeNoiseModes(response.data.noiseModes)
   const noiseStrength = normalizeNoiseStrength(response.data.noiseStrength ?? {})
   const dereverb = normalizeDereverb(response.data.dereverb)
+  // 若后端未返回 DNS 模式，前端注入显示选项（仅供展示，后端暂未实现）
+  if (!noiseModes.some((m) => m.id === 'dns')) {
+    noiseModes.push({
+      id: 'dns',
+      label: '深度噪声抑制（DNS）',
+      description: '基于深度学习的噪声抑制算法',
+      recommended: false,
+    })
+  }
   return {
     noiseModes,
     noiseStrength,
