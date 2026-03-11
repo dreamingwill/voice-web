@@ -5,9 +5,19 @@
         <h2 class="text-lg font-semibold text-primary">指令识别</h2>
         <p class="text-xs text-slate-500">已配置 {{ commandsStore.commandCount }} 条指令</p>
       </div>
-      <el-tag :type="commandsStore.enabled ? 'success' : 'info'" size="small">
-        {{ commandsStore.enabled ? '已开启' : '已关闭' }}
-      </el-tag>
+      <div class="flex items-center gap-2">
+        <el-tag :type="commandsStore.enabled ? 'success' : 'info'" size="small">
+          {{ commandsStore.enabled ? '已开启' : '已关闭' }}
+        </el-tag>
+        <el-tag
+          v-if="commandsStore.forwardTargetReachable !== null"
+          :type="commandsStore.forwardTargetReachable ? 'success' : 'danger'"
+          size="small"
+        >
+          转发目标{{ commandsStore.forwardTargetReachable ? '在线' : '离线' }}
+        </el-tag>
+        <el-tag v-else size="small" type="info">转发目标未配置</el-tag>
+      </div>
     </header>
     <div class="space-y-2 rounded-md border border-slate-200/70 p-3">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -82,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useCommandsStore } from '@/stores/useCommands'
@@ -91,6 +101,8 @@ import { useUserStore } from '@/stores/useUser'
 
 const commandsStore = useCommandsStore()
 const userStore = useUserStore()
+
+let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const localEnabled = ref(commandsStore.enabled)
 const localThreshold = ref(commandsStore.matchThreshold)
@@ -132,6 +144,12 @@ watch(
 
 onMounted(() => {
   void commandsStore.fetchCommands()
+  void commandsStore.checkForwardTarget()
+  pollTimer = setInterval(() => void commandsStore.checkForwardTarget(), 15_000)
+})
+
+onUnmounted(() => {
+  if (pollTimer !== null) clearInterval(pollTimer)
 })
 
 async function handleSaveSettings() {

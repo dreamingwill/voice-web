@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import {
   deleteCommand,
   fetchCommandList,
+  fetchForwardTargetStatus,
   searchCommands,
   toggleCommandMatching,
   updateCommand as updateCommandRequest,
@@ -75,6 +76,7 @@ interface CommandsState {
   searchQuery: string
   searchCode: string
   searchActive: boolean
+  forwardTargetReachable: boolean | null
 }
 
 export const useCommandsStore = defineStore('commands', {
@@ -100,6 +102,7 @@ export const useCommandsStore = defineStore('commands', {
     searchQuery: '',
     searchCode: '',
     searchActive: false,
+    forwardTargetReachable: null,
   }),
   getters: {
     commandCount: (state) => state.total,
@@ -333,6 +336,14 @@ export const useCommandsStore = defineStore('commands', {
       } catch (error) {
         console.error('[useCommandsStore] removeCommand failed', error)
         throw new Error('删除指令失败')
+      }
+    },
+    async checkForwardTarget() {
+      try {
+        const result = await fetchForwardTargetStatus()
+        this.forwardTargetReachable = result.configured ? result.reachable : null
+      } catch {
+        this.forwardTargetReachable = false
       }
     },
     setLastMatch(match: CommandMatchSnapshot | null) {

@@ -105,6 +105,11 @@ interface CommandForwardResponseRaw {
   forwarded_at: string
 }
 
+export async function fetchForwardTargetStatus(): Promise<{ configured: boolean; reachable: boolean }> {
+  const response = await api.get('api/status/forward-target')
+  return response.data
+}
+
 export async function forwardCommand(payload: CommandForwardRequest): Promise<CommandForwardResponse> {
   const response = await api.post<CommandForwardResponseRaw>('api/commands/forward', {
     projectCode: payload.projectCode,
