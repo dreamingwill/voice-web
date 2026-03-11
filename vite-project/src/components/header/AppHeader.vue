@@ -22,6 +22,13 @@
         >
           操作员管理
         </RouterLink>
+        <RouterLink
+          class="hover:underline"
+          :class="linkClass('/admin/job-positions')"
+          to="/admin/job-positions"
+        >
+          岗位管理
+        </RouterLink>
         
         <RouterLink
           class="hover:underline"
