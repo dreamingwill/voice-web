@@ -5,6 +5,14 @@
       :event="eventsStore.latestUnauthorizedEvent"
       @acknowledge="eventsStore.acknowledgeUnauthorized"
     />
+    <button
+      v-if="userStore.isAuthenticated"
+      type="button"
+      class="fixed right-0 top-1/2 z-30 -translate-y-1/2 rounded-l-xl border border-r-0 border-slate-200 bg-white/95 px-3 py-4 text-xs font-medium text-slate-700 shadow-lg transition hover:bg-slate-50"
+      @click="isTestPanelVisible = true"
+    >
+      测试面板
+    </button>
     <div class="grid gap-6 md:grid-cols-3 items-start">
       <section
         class="md:col-span-2 bg-white rounded-lg shadow p-4 flex flex-col gap-4 h-full"
@@ -217,6 +225,15 @@
         <CommandMatchCard class="h-full" />
       </div>
     </div>
+    <el-drawer
+      v-if="userStore.isAuthenticated"
+      v-model="isTestPanelVisible"
+      title="测试面板"
+      direction="rtl"
+      size="min(420px, 92vw)"
+    >
+      <TestPanelCard />
+    </el-drawer>
   </section>
 </template>
 
@@ -245,6 +262,7 @@ import {
 } from "@/services/realtimeClient";
 import AlertBanner from "@/components/alerts/AlertBanner.vue";
 import CommandMatchCard from "@/components/cards/CommandMatchCard.vue";
+import TestPanelCard from "@/components/cards/TestPanelCard.vue";
 
 const asrStore = useAsrStore();
 const connectionStore = useConnectionStore();
@@ -260,6 +278,7 @@ const transcripts = computed(() => asrStore.transcripts);
 const orderedTranscripts = computed(() => [...transcripts.value].reverse());
 const transcriptContainer = ref<HTMLElement | null>(null);
 const isAudioLoading = ref(false);
+const isTestPanelVisible = ref(false);
 const saveAudio = ref(false);
 const audioStatusText = computed(() => {
   if (!audioStore.isRecording) {
@@ -361,7 +380,6 @@ async function toggleRecording() {
   if (audioStore.isRecording) {
     await audioStore.stop();
     stopRealtimeStreaming(false);
-    connectionStore.reset();
     speakerStore.reset();
     ElMessage({
       type: "success",

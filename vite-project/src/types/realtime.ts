@@ -34,7 +34,9 @@ export interface DoneMessage {
 
 export interface ControlPongMessage {
   type: 'control.pong'
-  time?: number
+  sentAt?: number
+  serverReceivedAt?: number
+  serverSentAt?: number
 }
 
 export interface CommandForwardErrorMessage {
@@ -75,7 +77,7 @@ export type WsOutboundMessage =
       data: AudioStartPayload
     }
   | { type: 'audio.stop' }
-  | { type: 'control.ping' }
+  | { type: 'control.ping'; data?: { sentAt?: number } }
   | { type: 'control.pong' }
   | { type: 'meta'; data: Record<string, unknown> }
 
