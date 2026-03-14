@@ -209,6 +209,16 @@
               <span v-else>-</span>
             </template>
           </el-table-column>
+          <el-table-column label="录音文件" min-width="180" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.recording_file || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="转发结果" width="180">
+            <template #default="{ row }">
+              {{ formatForwardResult(row.command_forward_status, row.command_forward_detail) }}
+            </template>
+          </el-table-column>
         </el-table>
 
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -277,6 +287,9 @@ interface TranscriptRecord {
   locale?: string | null
   channel?: string | null
   operator?: string | null
+  recording_file?: string | null
+  command_forward_status?: string | null
+  command_forward_detail?: string | null
   created_at: string
   updated_at?: string | null
 }
@@ -505,6 +518,21 @@ function formatTranscriptSpeakers(record: TranscriptRecord) {
   return labels.join('、')
 }
 
+function formatForwardResult(status?: string | null, detail?: string | null) {
+  switch (status) {
+    case 'sent':
+      return '已转发'
+    case 'failed':
+      return detail ? `失败：${detail}` : '失败'
+    case 'blocked':
+      return detail === 'unknown_speaker' ? '已阻止：未知说话人' : '已阻止'
+    case 'pending':
+      return '转发中'
+    default:
+      return '-'
+  }
+}
+
 function toCsvRow(row: string[]): string {
   return row
     .map((cell) => {
@@ -574,7 +602,7 @@ function exportTranscripts() {
   }
   transcriptExporting.value = true
   try {
-    const header = ['时间', '会话ID', '主说话人', '文本内容', '段数', '时长', '相似度', '状态']
+    const header = ['时间', '会话ID', '主说话人', '文本内容', '段数', '时长', '相似度', '状态', '录音文件', '转发结果']
     const rows = transcriptDisplayedRecords.value.map((item) => [
       formatTimestamp(item.created_at),
       item.session_id,
@@ -584,6 +612,8 @@ function exportTranscripts() {
       formatDuration(item.duration_ms),
       formatSimilarity(item.similarity_avg, item.similarity_max),
       item.status ?? '',
+      item.recording_file ?? '',
+      formatForwardResult(item.command_forward_status, item.command_forward_detail),
     ])
     const csvContent = [header, ...rows].map((row) => toCsvRow(row)).join('\n')
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
