@@ -21,6 +21,21 @@
         @keyup.enter="applySearch"
         @clear="handleSearchReset"
       />
+      <el-select
+        v-model="filters.positionId"
+        placeholder="按岗位筛选"
+        clearable
+        class="w-44"
+        @change="applySearch"
+        @clear="handleSearchReset"
+      >
+        <el-option
+          v-for="p in allPositions"
+          :key="p.id"
+          :label="`${p.name}（L${p.level}）`"
+          :value="p.id"
+        />
+      </el-select>
       <el-button type="primary" @click="applySearch">查询</el-button>
       <el-button @click="handleSearchReset">重置</el-button>
     </div>
@@ -39,6 +54,12 @@
           {{ row.phone ?? '—' }}
         </template>
       </el-table-column> -->
+      <el-table-column label="岗位" width="160">
+        <template #default="{ row }">
+          <span v-if="row.position">{{ row.position.name }}（L{{ row.position.level }}）</span>
+          <span v-else class="text-slate-400">—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" width="140">
         <template #default="{ row }">
           <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" size="small">
@@ -127,6 +148,16 @@
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="form.phone" placeholder="可选，11位手机号" maxlength="20" />
         </el-form-item>
+        <el-form-item label="岗位">
+          <el-select v-model="form.positionId" placeholder="可选，选择岗位" clearable class="w-full">
+            <el-option
+              v-for="p in allPositions"
+              :key="p.id"
+              :label="`${p.name}（L${p.level}）`"
+              :value="p.id"
+            />
+          </el-select>
+        </el-form-item>
       </el-form>
 
       <template #footer>
@@ -156,6 +187,14 @@ import api from '@/services/apiService'
 import RecordVoiceModal from '@/components/admin/RecordVoiceModal.vue'
 
 const loading = ref(false)
+
+interface JobPosition {
+  id: number
+  name: string
+  level: number
+  description?: string | null
+}
+
 interface Operator {
   id: number
   account: string
@@ -164,7 +203,11 @@ interface Operator {
   phone?: string | null
   status: 'enabled' | 'disabled'
   has_voiceprint: boolean
+  position_id?: number | null
+  position?: JobPosition | null
 }
+
+const allPositions = ref<JobPosition[]>([])
 
 interface OperatorListResponse {
   items: Operator[]
@@ -176,12 +219,13 @@ interface OperatorListResponse {
 const operators = ref<Operator[]>([])
 const isFormVisible = ref(false)
 const formSubmitting = ref(false)
-const form = reactive<{ id: number | null; account: string; username: string; identity: string; phone: string }>({
+const form = reactive<{ id: number | null; account: string; username: string; identity: string; phone: string; positionId: number | null }>({
   id: null,
   account: '',
   username: '',
   identity: '',
   phone: '',
+  positionId: null,
 })
 const operatorFormRef = ref<FormInstance>()
 const voiceTarget = ref<Operator | null>(null)
@@ -193,6 +237,7 @@ const pagination = reactive({
 })
 const filters = reactive({
   keyword: '',
+  positionId: null as number | null,
 })
 
 const formRules: FormRules = {
@@ -204,8 +249,18 @@ const formRules: FormRules = {
 const isEditing = computed(() => Boolean(form.id))
 
 onMounted(() => {
+  void fetchPositions()
   void fetchOperators()
 })
+
+async function fetchPositions() {
+  try {
+    const res = await api.get<{ items: JobPosition[] }>('api/job-positions')
+    allPositions.value = res.data?.items ?? []
+  } catch {
+    // non-critical, silently fail
+  }
+}
 
 async function fetchOperators() {
   loading.value = true
@@ -215,6 +270,7 @@ async function fetchOperators() {
         page: pagination.page,
         page_size: pagination.pageSize,
         keyword: filters.keyword || undefined,
+        position_id: filters.positionId ?? undefined,
       },
     })
     operators.value = response.data?.items ?? []
@@ -238,6 +294,7 @@ function openCreateDialog() {
   form.username = ''
   form.identity = ''
   form.phone = ''
+  form.positionId = null
   isFormVisible.value = true
   void nextTickValidate(false)
 }
@@ -248,6 +305,7 @@ function openEditDialog(row: Operator) {
   form.username = row.username
   form.identity = row.identity ?? ''
   form.phone = row.phone ?? ''
+  form.positionId = row.position_id ?? null
   isFormVisible.value = true
   void nextTickValidate(false)
 }
@@ -271,6 +329,7 @@ async function submitForm() {
           username: form.username,
           identity: form.identity,
           phone: form.phone || null,
+          position_id: form.positionId,
         })
         ElMessage({
           type: 'success',
@@ -283,6 +342,7 @@ async function submitForm() {
           username: form.username,
           identity: form.identity,
           phone: form.phone || null,
+          position_id: form.positionId,
         })
         ElMessage({
           type: 'success',
@@ -356,6 +416,7 @@ function applySearch() {
 
 function handleSearchReset() {
   filters.keyword = ''
+  filters.positionId = null
   pagination.page = 1
   void fetchOperators()
 }

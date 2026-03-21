@@ -40,10 +40,11 @@ interface ConnectOptions {
   locale?: string
   enhancement?: AudioEnhancementPayload
   speakerRecognitionEnabled?: boolean
+  saveAudio?: boolean
 }
 
 const DEFAULT_OPTIONS: Required<Pick<WSServiceOptions, 'heartbeatInterval' | 'reconnectDelay' | 'maxReconnectDelay'>> = {
-  heartbeatInterval: 20_000,
+  heartbeatInterval: 2_000,
   reconnectDelay: 2_000,
   maxReconnectDelay: 20_000,
 }
@@ -68,6 +69,7 @@ export class WSService {
   private locale: string | null = null
   private enhancementConfig: AudioEnhancementPayload | null = null
   private speakerRecognitionEnabled: boolean | null = null
+  private saveAudio: boolean | null = null
 
   private readonly partialListeners = new Set<Listener<PartialTranscriptMessage>>()
   private readonly finalListeners = new Set<Listener<FinalTranscriptMessage>>()
@@ -102,6 +104,7 @@ export class WSService {
     this.enhancementConfig = options?.enhancement ?? null
     this.speakerRecognitionEnabled =
       typeof options?.speakerRecognitionEnabled === 'boolean' ? options?.speakerRecognitionEnabled : null
+    this.saveAudio = typeof options?.saveAudio === 'boolean' ? options.saveAudio : null
     this.readyState = 'connecting'
     this.manualClose = false
     this.shouldReconnect = true
@@ -134,6 +137,7 @@ export class WSService {
             locale: this.locale ?? 'zh-CN',
             enhancement: this.enhancementConfig ?? undefined,
             speakerRecognitionEnabled: this.speakerRecognitionEnabled ?? undefined,
+            saveAudio: this.saveAudio ?? undefined,
           },
         })
       }
@@ -324,7 +328,15 @@ export class WSService {
     console.debug('[wsService] 收到 control.pong', message)
     if (this.lastPingAt > 0) {
       const latency = Date.now() - this.lastPingAt
-      this.metaListeners.forEach((listener) => listener({ latency }))
+      this.metaListeners.forEach((listener) =>
+        listener({
+          networkRtt: latency,
+          sentAt: message.sentAt,
+          serverReceivedAt: message.serverReceivedAt,
+          serverSentAt: message.serverSentAt,
+        }),
+      )
+      this.lastPingAt = 0
     }
   }
 
@@ -337,9 +349,9 @@ export class WSService {
     this.cleanupHeartbeat()
     if (!this.heartbeatInterval || this.heartbeatInterval <= 0) return
     this.heartbeatTimer = setInterval(() => {
-      if (Date.now() - this.lastPingAt > this.heartbeatInterval) {
-        this.sendJson({ type: 'control.ping' })
+      if (this.lastPingAt === 0) {
         this.lastPingAt = Date.now()
+        this.sendJson({ type: 'control.ping', data: { sentAt: this.lastPingAt } })
       }
     }, this.heartbeatInterval)
   }
@@ -401,6 +413,7 @@ export function createWsService(url: string) {
   service.onOpen(() => {
     connectionStore.setStatus('connected')
     connectionStore.setLatency(null)
+    connectionStore.clearNetworkRttSamples()
   })
 
   service.onClose(({ code }) => {
@@ -517,7 +530,10 @@ export function createWsService(url: string) {
   })
   service.onMeta((meta) => {
     if (typeof meta.latency === 'number') {
-      connectionStore.setLatency(meta.latency)
+      connectionStore.setRecognitionLatency(meta.latency)
+    }
+    if (typeof meta.networkRtt === 'number') {
+      connectionStore.pushNetworkRttSample(meta.networkRtt)
     }
     if (typeof meta.speakerRecognitionEnabled === 'boolean') {
       const systemSettingsStore = useSystemSettingsStore()

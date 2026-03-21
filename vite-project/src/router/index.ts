@@ -28,6 +28,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/admin/job-positions',
+      name: 'admin-job-positions',
+      component: () => import('@/pages/admin/JobPositions.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/admin/commands',
       name: 'admin-commands',
       component: () => import('@/pages/admin/Commands.vue'),
